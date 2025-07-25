@@ -1,5 +1,4 @@
 {
-    "proxy": "http://localhost:3000",
     "name": "fee-management-frontend",
     "version": "1.0.0",
     "private": true,

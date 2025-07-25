@@ -1,4 +1,5 @@
 require('dotenv').config();
+const path = require('path');
 console.log('MONGODB_URI:', process.env.MONGODB_URI);
 console.log('ZOHO_CLIENT_ID:', process.env.ZOHO_CLIENT_ID);
 console.log('ZOHO_CLIENT_SECRET:', process.env.ZOHO_CLIENT_SECRET);
@@ -426,9 +427,17 @@ app.use('/api/sms', smsRouter);
 app.use('/api/student', studentRouter); // Use student router
 app.use('/api', syncZohoToMongoRouter);
 
+// Serve static files from React build
+app.use(express.static(path.join(__dirname, 'client/build')));
+
 // Catch-all for unknown API routes (returns JSON, not HTML)
-app.use((req, res, next) => {
-  res.status(404).json({ error: 'Not found' });
+app.use('/api/*', (req, res) => {
+  res.status(404).json({ error: 'API endpoint not found' });
+});
+
+// Serve React app for all other routes
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'client/build', 'index.html'));
 });
 
 app.listen(PORT, () => {

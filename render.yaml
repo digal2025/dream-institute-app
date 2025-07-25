@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: dream-institute-fee-management
+    env: node
+    plan: starter
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false
+      - key: ZOHO_CLIENT_ID
+        sync: false
+      - key: ZOHO_CLIENT_SECRET
+        sync: false
+      - key: ZOHO_ORGANIZATION_ID
+        sync: false
+      - key: ZOHO_REDIRECT_URI
+        sync: false
+      - key: ZOHO_API_BASE
+        sync: false
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_WHATSAPP_NUMBER
+        sync: false
+      - key: SENDGRID_API_KEY
+        sync: false
+      - key: JWT_SECRET
+        sync: false 
