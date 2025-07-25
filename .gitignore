@@ -1,0 +1,8 @@
+node_modules/
+.DS_Store
+.env
+npm-debug.log
+/zoho-invoice-api/client/build
+/zoho-invoice-api/backend/node_modules
+/zoho-invoice-api/node_modules
+Dream-Institute-Fee-Management-app/ 
