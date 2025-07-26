@@ -1,4 +1,3 @@
-require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const app = express();
@@ -9,7 +8,7 @@ app.use(express.static(path.join(__dirname, 'client/build')));
 
 // Basic test route
 app.get('/api/test', (req, res) => {
-  res.json({ message: 'Server is working!' });
+  res.json({ message: 'Simple server is working!' });
 });
 
 // Serve React app for all other routes
@@ -17,9 +16,9 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'client/build', 'index.html'));
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = 3001;
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Simple server running on port ${PORT}`);
   console.log(`Application available at: http://localhost:${PORT}`);
 }); 
