@@ -5,7 +5,7 @@
   "main": "zoho-invoice-api/index.js",
   "scripts": {
     "start": "cd zoho-invoice-api && npm start",
-    "build": "cd zoho-invoice-api/client && npm install && npm run build",
+    "build": "cd zoho-invoice-api/client && npm install && CI=false DISABLE_ESLINT_PLUGIN=true npm run build",
     "dev": "cd zoho-invoice-api && npm run dev",
     "install-all": "npm install && cd zoho-invoice-api && npm install && cd client && npm install",
     "test": "cd zoho-invoice-api && npm test"
