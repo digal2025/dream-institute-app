@@ -1,0 +1,12 @@
+{
+  "build": {
+    "command": "npm run install-all && npm run build"
+  },
+  "start": {
+    "command": "npm start"
+  },
+  "environment": {
+    "NODE_ENV": "production",
+    "PORT": "3000"
+  }
+} 
