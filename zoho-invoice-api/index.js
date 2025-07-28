@@ -3,6 +3,16 @@ const express = require('express');
 const path = require('path');
 const app = express();
 
+// Import routes
+const authRouter = require('./backend/routes/auth');
+const mongoCustomersRouter = require('./routes/mongoCustomers');
+const mongoPaymentsRouter = require('./routes/mongoPayments');
+const mongoInvoicesRouter = require('./routes/mongoInvoices');
+const notificationsRouter = require('./routes/notifications');
+const smsRouter = require('./routes/sms');
+const studentRouter = require('./backend/routes/student');
+const syncZohoToMongoRouter = require('./backend/routes/syncZohoToMongo');
+
 // Middleware
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'client/build')));
@@ -10,6 +20,21 @@ app.use(express.static(path.join(__dirname, 'client/build')));
 // Basic test route
 app.get('/api/test', (req, res) => {
   res.json({ message: 'Server is working!' });
+});
+
+// API Routes
+app.use('/api/auth', authRouter);
+app.use('/api/mongo/customers', mongoCustomersRouter);
+app.use('/api/mongo/payments', mongoPaymentsRouter);
+app.use('/api/mongo/invoices', mongoInvoicesRouter);
+app.use('/api/notifications', notificationsRouter);
+app.use('/api/sms', smsRouter);
+app.use('/api/student', studentRouter);
+app.use('/api', syncZohoToMongoRouter);
+
+// Catch-all for unknown API routes (returns JSON, not HTML)
+app.use('/api/*', (req, res) => {
+  res.status(404).json({ error: 'API endpoint not found' });
 });
 
 // Serve React app for all other routes
