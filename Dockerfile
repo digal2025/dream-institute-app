@@ -14,6 +14,9 @@ RUN npm run build
 # Production stage
 FROM node:18-alpine AS production
 
+# Install curl for health checks
+RUN apk add --no-cache curl bash
+
 # Create app directory
 WORKDIR /app
 
@@ -31,16 +34,20 @@ COPY zoho-invoice-api/ ./
 # Copy built frontend from builder stage
 COPY --from=builder /app/client/build ./client/build
 
+# Copy debug script
+COPY debug-startup.sh ./
+RUN chmod +x debug-startup.sh
+
 # Change ownership to non-root user
 RUN chown -R nextjs:nodejs /app
 USER nextjs
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:3000/api/test || exit 1
+# Health check with better timeout
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD curl -f http://localhost:3000/health || exit 1
 
 # Expose port
 EXPOSE 3000
 
-# Start the application
-CMD ["npm", "start"]
+# Start the application with debug info
+CMD ["./debug-startup.sh"]
