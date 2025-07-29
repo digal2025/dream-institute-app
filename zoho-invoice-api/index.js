@@ -1,7 +1,22 @@
 require('dotenv').config();
 const express = require('express');
+const mongoose = require('mongoose');
 const path = require('path');
 const app = express();
+
+// Initialize MongoDB connection
+async function connectToMongoDB() {
+  try {
+    await mongoose.connect(process.env.MONGODB_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+    console.log('✅ Connected to MongoDB successfully');
+  } catch (error) {
+    console.error('❌ MongoDB connection failed:', error);
+    process.exit(1);
+  }
+}
 
 // Import routes
 const authRouter = require('./backend/routes/auth');
@@ -44,7 +59,13 @@ app.get('*', (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Application available at: http://localhost:${PORT}`);
+// Start server only after MongoDB connection is established
+connectToMongoDB().then(() => {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+    console.log(`Application available at: http://localhost:${PORT}`);
+  });
+}).catch(error => {
+  console.error('Failed to start server:', error);
+  process.exit(1);
 }); 
