@@ -42,9 +42,6 @@ COPY --from=builder /app/client/build ./zoho-invoice-api/client/build
 # Change to zoho-invoice-api directory
 WORKDIR /app/zoho-invoice-api
 
-# Copy environment file template
-COPY zoho-invoice-api/.env.example .env
-
 # Change ownership to non-root user
 RUN chown -R nextjs:nodejs /app
 USER nextjs
