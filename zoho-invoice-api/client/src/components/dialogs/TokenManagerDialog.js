@@ -5,6 +5,7 @@ import SyncIcon from '@mui/icons-material/Sync';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import useDashboardData from '../../hooks/useDashboardData';
+import { buildApiUrl, API_ENDPOINTS } from '../../utils/apiConfig';
 
 /**
  * TokenManagerDialog
@@ -40,7 +41,7 @@ export default function TokenManagerDialog({ inDialog = false }) {
   }, []);
 
   const handleGenerateToken = () => {
-    const popup = window.open('http://localhost:3000/auth/zoho', '_blank', 'width=600,height=700');
+    const popup = window.open(buildApiUrl(API_ENDPOINTS.ZOHO_AUTH), '_blank', 'width=600,height=700');
     popupIntervalRef.current = setInterval(() => {
       if (popup.closed) {
         clearInterval(popupIntervalRef.current);

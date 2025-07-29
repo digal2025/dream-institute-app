@@ -20,6 +20,7 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import Paper from '@mui/material/Paper';
+import { buildApiUrl, API_ENDPOINTS } from '../utils/apiConfig';
 
 function StudentLogin() {
   const [tab, setTab] = useState(0); // 0 = Login, 1 = Register
@@ -203,7 +204,7 @@ function StudentLogin() {
     setResetLoading(true);
     setResetMsg('');
     try {
-      const res = await fetch('http://localhost:3000/api/student/reset-password-request', {
+      const res = await fetch(buildApiUrl(API_ENDPOINTS.STUDENT_RESET_PASSWORD), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: resetEmail })

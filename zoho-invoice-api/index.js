@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
+const cors = require('cors');
 const path = require('path');
 const app = express();
 
@@ -46,6 +47,17 @@ const notificationsRouter = require('./routes/notifications');
 const smsRouter = require('./routes/sms');
 const studentRouter = require('./backend/routes/student');
 const syncZohoToMongoRouter = require('./backend/routes/syncZohoToMongo');
+
+// CORS Configuration
+const corsOptions = {
+  origin: process.env.NODE_ENV === 'production' 
+    ? ['https://fees.dreaminstitute.co.in', 'https://www.fees.dreaminstitute.co.in']
+    : ['http://localhost:3000', 'http://localhost:3001'],
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
 
 // Middleware
 app.use(express.json());
