@@ -17,6 +17,18 @@ echo "📦 Package.json exists:"
 ls -la /app/package.json 2>/dev/null && echo "✅ Found" || echo "❌ Missing"
 
 echo ""
+echo "📦 Node modules check:"
+ls -la /app/node_modules/ | head -10
+
+echo ""
+echo "🔍 Checking for bcryptjs:"
+ls /app/node_modules/ | grep bcrypt || echo "❌ bcryptjs NOT found in node_modules"
+
+echo ""
+echo "🔍 Checking for jsonwebtoken:"
+ls /app/node_modules/ | grep jsonwebtoken || echo "❌ jsonwebtoken NOT found in node_modules"
+
+echo ""
 echo "🔌 Network Configuration:"
 echo "Binding to: 0.0.0.0:3000"
 

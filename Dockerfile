@@ -25,8 +25,9 @@ RUN addgroup -g 1001 -S nodejs && \
     adduser -S nextjs -u 1001
 
 # Copy backend package files and install dependencies
+# Cache bust: bcryptjs and jsonwebtoken added - 2025-07-29
 COPY zoho-invoice-api/package*.json ./
-RUN npm ci --only=production && npm cache clean --force
+RUN npm ci --production && npm cache clean --force
 
 # Copy backend application code
 COPY zoho-invoice-api/ ./
