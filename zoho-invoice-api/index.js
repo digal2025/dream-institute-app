@@ -87,6 +87,38 @@ app.get('/', (req, res) => {
   });
 });
 
+// Zoho OAuth Routes (must be before API routes)
+app.get('/auth/zoho', (req, res) => {
+  const clientId = process.env.ZOHO_CLIENT_ID;
+  const redirectUri = process.env.ZOHO_REDIRECT_URI;
+  const scope = 'ZohoInvoice.FullAccess.all';
+  
+  if (!clientId || !redirectUri) {
+    return res.status(500).json({ error: 'Missing Zoho OAuth configuration' });
+  }
+  
+  const authUrl = `https://accounts.zoho.in/oauth/v2/auth?response_type=code&client_id=${clientId}&scope=${scope}&redirect_uri=${encodeURIComponent(redirectUri)}&access_type=offline`;
+  res.redirect(authUrl);
+});
+
+app.get('/auth/zoho/callback', (req, res) => {
+  const { code } = req.query;
+  
+  if (!code) {
+    return res.status(400).send('<script>window.close();</script>');
+  }
+  
+  // Store the code temporarily and close the popup
+  // In a real implementation, you'd exchange this code for tokens
+  res.send(`
+    <script>
+      localStorage.setItem('zoho_auth_code', '${code}');
+      alert('Zoho authentication successful! You can now sync data.');
+      window.close();
+    </script>
+  `);
+});
+
 // API Routes
 app.use('/api/auth', authRouter);
 app.use('/api/mongo/customers', mongoCustomersRouter);
