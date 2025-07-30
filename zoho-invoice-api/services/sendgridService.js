@@ -2,14 +2,61 @@ const sgMail = require('@sendgrid/mail');
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 async function sendOtpEmail(to, otp) {
+  console.log('📧 [SENDGRID] Preparing OTP email...');
+  console.log('📧 [SENDGRID] To:', to);
+  console.log('📧 [SENDGRID] From:', process.env.SENDGRID_FROM_EMAIL);
+  console.log('🔢 [SENDGRID] OTP:', otp);
+  
+  // Validate environment variables
+  if (!process.env.SENDGRID_API_KEY) {
+    throw new Error('SENDGRID_API_KEY is not configured');
+  }
+  
+  if (!process.env.SENDGRID_FROM_EMAIL) {
+    throw new Error('SENDGRID_FROM_EMAIL is not configured');
+  }
+  
   const msg = {
     to,
-    from: process.env.SENDGRID_FROM_EMAIL || 'no-reply@yourdomain.com',
-    subject: 'Your Dream Institute OTP',
-    text: `Your OTP is: ${otp}\nThis code is valid for 5 minutes.`,
-    html: `<p>Your OTP is: <b>${otp}</b><br>This code is valid for 5 minutes.</p>`,
+    from: process.env.SENDGRID_FROM_EMAIL,
+    subject: 'Your Dream Institute OTP - Password Reset',
+    text: `Your OTP for password reset is: ${otp}\n\nThis code is valid for 5 minutes.\n\nIf you did not request this, please ignore this email.\n\nDream Institute Team`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #333; text-align: center;">🔐 Dream Institute Password Reset</h2>
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <p style="font-size: 16px; margin-bottom: 10px;">Your OTP for password reset is:</p>
+          <div style="text-align: center; margin: 20px 0;">
+            <span style="font-size: 32px; font-weight: bold; color: #007bff; background: #e7f3ff; padding: 10px 20px; border-radius: 8px; letter-spacing: 3px;">${otp}</span>
+          </div>
+          <p style="color: #666; font-size: 14px; text-align: center;">This code is valid for <strong>5 minutes</strong></p>
+        </div>
+        <p style="color: #666; font-size: 14px;">If you did not request this password reset, please ignore this email.</p>
+        <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+        <p style="color: #999; font-size: 12px; text-align: center;">Dream Institute Team<br>Email sent at: ${new Date().toLocaleString()}</p>
+      </div>
+    `,
   };
-  return sgMail.send(msg);
+  
+  console.log('📤 [SENDGRID] Sending email via SendGrid...');
+  
+  try {
+    const result = await sgMail.send(msg);
+    console.log('✅ [SENDGRID] Email sent successfully');
+    console.log('📊 [SENDGRID] Status Code:', result[0]?.statusCode);
+    console.log('🆔 [SENDGRID] Message ID:', result[0]?.headers?.['x-message-id']);
+    return result;
+  } catch (error) {
+    console.error('❌ [SENDGRID] Failed to send email:');
+    console.error('❌ [SENDGRID] Error:', error.message);
+    
+    if (error.response) {
+      console.error('❌ [SENDGRID] Response Status:', error.response.status);
+      console.error('❌ [SENDGRID] Response Body:', JSON.stringify(error.response.body, null, 2));
+    }
+    
+    throw error;
+  }
 }
 
 async function sendPasswordResetEmail(to, resetUrl) {

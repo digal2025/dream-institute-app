@@ -28,6 +28,7 @@ export const API_ENDPOINTS = {
   // Auth endpoints
   LOGIN: '/api/auth/login',
   REGISTER: '/api/auth/register',
+  CHANGE_PASSWORD: '/api/auth/change-password',
   
   // Student endpoints  
   STUDENT_LOGIN: '/api/student/login',

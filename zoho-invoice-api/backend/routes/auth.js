@@ -70,22 +70,80 @@ router.post('/login', async (req, res) => {
  */
 router.post('/admin-reset-password-request', async (req, res) => {
   const { email } = req.body;
-  if (!email) return res.status(400).json({ error: 'Email is required' });
-  const user = await User.findOne({ email });
-  // Always respond with success to prevent email enumeration
-  if (!user) return res.json({ success: true, msg: 'If your email is registered, you will receive an OTP.' });
-  // Generate OTP
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 min
-  user.otp = otp;
-  user.otpExpires = otpExpires;
-  await user.save();
+  
+  // Enhanced logging for debugging
+  console.log('🔍 [ADMIN-RESET] Password reset request received');
+  console.log('📧 [ADMIN-RESET] Email:', email);
+  console.log('⏰ [ADMIN-RESET] Timestamp:', new Date().toISOString());
+  
+  if (!email) {
+    console.log('❌ [ADMIN-RESET] No email provided');
+    return res.status(400).json({ error: 'Email is required' });
+  }
+  
   try {
-    await sendOtpEmail(email, otp);
-    res.json({ success: true, msg: 'If your email is registered, you will receive an OTP.' });
+    console.log('🔍 [ADMIN-RESET] Searching for user in database...');
+    const user = await User.findOne({ email });
+    
+    if (!user) {
+      console.log('❌ [ADMIN-RESET] User not found for email:', email);
+      // Always respond with success to prevent email enumeration
+      return res.json({ success: true, msg: 'If your email is registered, you will receive an OTP.' });
+    }
+    
+    console.log('✅ [ADMIN-RESET] User found:', user.name, '(' + user.email + ')');
+    
+    // Generate OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 min
+    
+    console.log('🔢 [ADMIN-RESET] Generated OTP:', otp);
+    console.log('⏰ [ADMIN-RESET] OTP expires at:', otpExpires.toISOString());
+    
+    // Save OTP to database
+    user.otp = otp;
+    user.otpExpires = otpExpires;
+    await user.save();
+    
+    console.log('💾 [ADMIN-RESET] OTP saved to database successfully');
+    
+    // Send email
+    console.log('📤 [ADMIN-RESET] Attempting to send OTP email...');
+    console.log('📧 [ADMIN-RESET] From email:', process.env.SENDGRID_FROM_EMAIL);
+    console.log('🔑 [ADMIN-RESET] API key set:', !!process.env.SENDGRID_API_KEY);
+    
+    const emailResult = await sendOtpEmail(email, otp);
+    
+    console.log('✅ [ADMIN-RESET] Email sent successfully!');
+    console.log('📊 [ADMIN-RESET] SendGrid status:', emailResult[0]?.statusCode);
+    console.log('🆔 [ADMIN-RESET] Message ID:', emailResult[0]?.headers?.['x-message-id']);
+    
+    res.json({ 
+      success: true, 
+      msg: 'If your email is registered, you will receive an OTP.',
+      debug: {
+        emailSent: true,
+        statusCode: emailResult[0]?.statusCode,
+        messageId: emailResult[0]?.headers?.['x-message-id']
+      }
+    });
+    
   } catch (err) {
-    console.error('SendGrid OTP email error (admin-reset-password-request):', err && err.stack ? err.stack : err);
-    res.status(500).json({ error: 'Failed to send OTP email.' });
+    console.error('❌ [ADMIN-RESET] Error occurred:');
+    console.error('❌ [ADMIN-RESET] Error message:', err.message);
+    console.error('❌ [ADMIN-RESET] Error stack:', err.stack);
+    
+    if (err.response) {
+      console.error('❌ [ADMIN-RESET] SendGrid response:', err.response.body);
+    }
+    
+    res.status(500).json({ 
+      error: 'Failed to send OTP email.',
+      debug: {
+        errorMessage: err.message,
+        errorType: err.name || 'Unknown'
+      }
+    });
   }
 });
 
@@ -221,6 +279,105 @@ function authMiddleware(req, res, next) {
  */
 router.get('/me', authMiddleware, async (req, res) => {
   res.json({ user: req.user });
+});
+
+/**
+ * POST /api/auth/test-otp-email
+ * Test endpoint to verify OTP email functionality
+ * Body: { email }
+ */
+router.post('/test-otp-email', async (req, res) => {
+  const { email } = req.body;
+  
+  console.log('🧪 [TEST-OTP] Test OTP endpoint called');
+  console.log('📧 [TEST-OTP] Email:', email);
+  
+  if (!email) {
+    return res.status(400).json({ error: 'Email is required for testing' });
+  }
+  
+  try {
+    // Generate test OTP
+    const testOtp = '123456';
+    console.log('🔢 [TEST-OTP] Using test OTP:', testOtp);
+    
+    // Send test email
+    console.log('📤 [TEST-OTP] Sending test OTP email...');
+    const emailResult = await sendOtpEmail(email, testOtp);
+    
+    console.log('✅ [TEST-OTP] Test email sent successfully!');
+    console.log('📊 [TEST-OTP] Status:', emailResult[0]?.statusCode);
+    
+    res.json({
+      success: true,
+      message: 'Test OTP email sent successfully',
+      email: email,
+      otp: testOtp,
+      statusCode: emailResult[0]?.statusCode,
+      messageId: emailResult[0]?.headers?.['x-message-id']
+    });
+    
+  } catch (error) {
+    console.error('❌ [TEST-OTP] Test failed:', error.message);
+    res.status(500).json({
+      error: 'Test OTP email failed',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/auth/change-password
+ * Change user password (protected)
+ * Body: { currentPassword, newPassword }
+ */
+router.post('/change-password', authMiddleware, async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  
+  // Validation
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: 'Current password and new password are required' });
+  }
+  
+  if (newPassword.length < 6) {
+    return res.status(400).json({ error: 'New password must be at least 6 characters long' });
+  }
+  
+  if (currentPassword === newPassword) {
+    return res.status(400).json({ error: 'New password must be different from current password' });
+  }
+  
+  try {
+    // Get user from database
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Verify current password
+    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isCurrentPasswordValid) {
+      return res.status(400).json({ message: 'Current password is incorrect' });
+    }
+    
+    // Hash new password
+    const newPasswordHash = await bcrypt.hash(newPassword, 10);
+    
+    // Update password in database
+    user.passwordHash = newPasswordHash;
+    await user.save();
+    
+    console.log('🔄 Password changed successfully for user:', user.email);
+    
+    res.json({ 
+      success: true, 
+      message: 'Password changed successfully' 
+    });
+    
+  } catch (error) {
+    console.error('❌ Change password error:', error);
+    res.status(500).json({ error: 'Failed to change password' });
+  }
 });
 
 module.exports = router; 

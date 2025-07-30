@@ -737,7 +737,95 @@ function AdminDashboard() {
 
   // User state
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
+  
+  // Password change state
+  const [showPasswordChange, setShowPasswordChange] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [passwordErrors, setPasswordErrors] = useState({});
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState('');
 
+  // Password validation function
+  const validatePassword = () => {
+    const errors = {};
+    
+    if (!passwordData.currentPassword) {
+      errors.currentPassword = 'Current password is required';
+    }
+    
+    if (!passwordData.newPassword) {
+      errors.newPassword = 'New password is required';
+    } else if (passwordData.newPassword.length < 6) {
+      errors.newPassword = 'Password must be at least 6 characters long';
+    }
+    
+    if (!passwordData.confirmPassword) {
+      errors.confirmPassword = 'Please confirm your new password';
+    } else if (passwordData.newPassword !== passwordData.confirmPassword) {
+      errors.confirmPassword = 'Passwords do not match';
+    }
+    
+    if (passwordData.currentPassword === passwordData.newPassword) {
+      errors.newPassword = 'New password must be different from current password';
+    }
+    
+    setPasswordErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  // Handle password change
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    
+    if (!validatePassword()) {
+      return;
+    }
+    
+    setPasswordLoading(true);
+    setPasswordMessage('');
+    
+    try {
+      const res = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          currentPassword: passwordData.currentPassword,
+          newPassword: passwordData.newPassword
+        })
+      });
+      
+      const data = await res.json();
+      
+      if (res.ok) {
+        setPasswordMessage('Password changed successfully!');
+        setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+        setShowPasswordChange(false);
+        setTimeout(() => setPasswordMessage(''), 3000);
+      } else {
+        setPasswordErrors({ currentPassword: data.message || 'Failed to change password' });
+      }
+    } catch (error) {
+      setPasswordErrors({ currentPassword: 'Network error. Please try again.' });
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
+  // Reset password form when dialog closes
+  const handleProfileDialogClose = () => {
+    setProfileDialogOpen(false);
+    setShowPasswordChange(false);
+    setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    setPasswordErrors({});
+    setPasswordMessage('');
+  };
 
   // --- Render ---
   return (
@@ -954,9 +1042,9 @@ function AdminDashboard() {
       />
 
       {/* Profile Dialog */}
-      <Dialog open={profileDialogOpen} onClose={() => setProfileDialogOpen(false)} maxWidth="xs" fullWidth>
+      <Dialog open={profileDialogOpen} onClose={handleProfileDialogClose} maxWidth="sm" fullWidth>
         <Paper elevation={6} sx={{ borderRadius: 4, p: 0, background: 'linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%)', boxShadow: '0 8px 32px 0 rgba(99,102,241,0.10)', position: 'relative', px: { xs: 2, sm: 4 }, py: { xs: 2, sm: 3 } }}>
-          <IconButton onClick={() => setProfileDialogOpen(false)} sx={{ position: 'absolute', top: 12, right: 12, color: '#6366f1', background: '#fff', borderRadius: '50%', boxShadow: '0 1px 4px #e0e7ff33', zIndex: 2, '&:hover': { background: '#e0e7ff' } }}>
+          <IconButton onClick={handleProfileDialogClose} sx={{ position: 'absolute', top: 12, right: 12, color: '#6366f1', background: '#fff', borderRadius: '50%', boxShadow: '0 1px 4px #e0e7ff33', zIndex: 2, '&:hover': { background: '#e0e7ff' } }}>
             <CloseIcon sx={{ fontSize: 24 }} />
           </IconButton>
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', pt: 4, pb: 2 }}>
@@ -966,8 +1054,138 @@ function AdminDashboard() {
             <Box sx={{ width: '100%', px: 3, py: 1 }}>
               <Typography variant="h6" sx={{ fontWeight: 700, color: '#6366f1', mb: 2, textAlign: 'center' }}>User Details</Typography>
               <Typography sx={{ fontSize: 16, mb: 1 }}><b>Name:</b> {currentUser?.name || 'N/A'}</Typography>
-              <Typography sx={{ fontSize: 16, mb: 1 }}><b>Email:</b> {currentUser?.email || 'N/A'}</Typography>
-              <Button onClick={logout} fullWidth variant="outlined" color="error" sx={{ fontWeight: 700, borderRadius: 2.5, px: 3, py: 1.2, textTransform: 'none', borderColor: '#ef4444', color: '#ef4444', '&:hover': { borderColor: '#dc2626', backgroundColor: '#fef2f2', color: '#dc2626' }, mt: 2 }}>
+              <Typography sx={{ fontSize: 16, mb: 2 }}><b>Email:</b> {currentUser?.email || 'N/A'}</Typography>
+              
+              {/* Password Success Message */}
+              {passwordMessage && (
+                <Typography sx={{ 
+                  fontSize: 14, 
+                  color: '#10b981', 
+                  textAlign: 'center', 
+                  mb: 2, 
+                  p: 1, 
+                  backgroundColor: '#ecfdf5', 
+                  borderRadius: 1,
+                  border: '1px solid #d1fae5'
+                }}>
+                  {passwordMessage}
+                </Typography>
+              )}
+              
+              {/* Change Password Section */}
+              {!showPasswordChange ? (
+                <Button 
+                  onClick={() => setShowPasswordChange(true)} 
+                  fullWidth 
+                  variant="outlined" 
+                  sx={{ 
+                    fontWeight: 700, 
+                    borderRadius: 2.5, 
+                    px: 3, 
+                    py: 1.2, 
+                    textTransform: 'none', 
+                    borderColor: '#6366f1', 
+                    color: '#6366f1', 
+                    mb: 2,
+                    '&:hover': { 
+                      borderColor: '#4f46e5', 
+                      backgroundColor: '#f8fafc', 
+                      color: '#4f46e5' 
+                    } 
+                  }}
+                >
+                  Change Password
+                </Button>
+              ) : (
+                <Box component="form" onSubmit={handlePasswordChange} sx={{ mb: 2 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#6366f1', mb: 2, textAlign: 'center' }}>
+                    Change Password
+                  </Typography>
+                  
+                  <TextField
+                    fullWidth
+                    type="password"
+                    label="Current Password"
+                    value={passwordData.currentPassword}
+                    onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
+                    error={!!passwordErrors.currentPassword}
+                    helperText={passwordErrors.currentPassword}
+                    sx={{ mb: 2 }}
+                    size="small"
+                  />
+                  
+                  <TextField
+                    fullWidth
+                    type="password"
+                    label="New Password"
+                    value={passwordData.newPassword}
+                    onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
+                    error={!!passwordErrors.newPassword}
+                    helperText={passwordErrors.newPassword}
+                    sx={{ mb: 2 }}
+                    size="small"
+                  />
+                  
+                  <TextField
+                    fullWidth
+                    type="password"
+                    label="Confirm New Password"
+                    value={passwordData.confirmPassword}
+                    onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                    error={!!passwordErrors.confirmPassword}
+                    helperText={passwordErrors.confirmPassword}
+                    sx={{ mb: 2 }}
+                    size="small"
+                  />
+                  
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Button
+                      type="submit"
+                      variant="contained"
+                      disabled={passwordLoading}
+                      sx={{ 
+                        flex: 1,
+                        fontWeight: 600, 
+                        borderRadius: 2, 
+                        py: 1,
+                        textTransform: 'none',
+                        background: '#6366f1',
+                        '&:hover': { background: '#4f46e5' }
+                      }}
+                    >
+                      {passwordLoading ? 'Changing...' : 'Change Password'}
+                    </Button>
+                    
+                    <Button
+                      type="button"
+                      variant="outlined"
+                      onClick={() => {
+                        setShowPasswordChange(false);
+                        setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                        setPasswordErrors({});
+                      }}
+                      sx={{ 
+                        flex: 1,
+                        fontWeight: 600, 
+                        borderRadius: 2, 
+                        py: 1,
+                        textTransform: 'none',
+                        borderColor: '#6b7280',
+                        color: '#6b7280',
+                        '&:hover': { 
+                          borderColor: '#4b5563', 
+                          backgroundColor: '#f9fafb', 
+                          color: '#4b5563' 
+                        }
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </Box>
+                </Box>
+              )}
+              
+              <Button onClick={logout} fullWidth variant="outlined" color="error" sx={{ fontWeight: 700, borderRadius: 2.5, px: 3, py: 1.2, textTransform: 'none', borderColor: '#ef4444', color: '#ef4444', '&:hover': { borderColor: '#dc2626', backgroundColor: '#fef2f2', color: '#dc2626' } }}>
                 <LogoutIcon sx={{ fontSize: 22, mr: 1 }} /> Logout
               </Button>
             </Box>
