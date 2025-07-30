@@ -9,8 +9,10 @@ import Typography from '@mui/material/Typography';
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import AssessmentIcon from '@mui/icons-material/Assessment';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import StudentFinancialReport from './StudentFinancialReport';
 
 /**
  * PaymentHistoryDialog
@@ -33,6 +35,7 @@ export default function PaymentHistoryDialog({ open, onClose, loading, error, pa
   const [updateSuccessId, setUpdateSuccessId] = useState(null);
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [showFinancialReport, setShowFinancialReport] = useState(false);
 
   const handleDelete = async (paymentId) => {
     setDeletingId(paymentId);
@@ -165,6 +168,26 @@ export default function PaymentHistoryDialog({ open, onClose, loading, error, pa
           <CloseIcon />
         </IconButton>
       </DialogTitle>
+      
+      {/* Financial Report Button */}
+      <Box sx={{ px: 5, py: 2, background: '#f8fafc', borderBottom: '1px solid #e0e7ff' }}>
+        <Button
+          variant="contained"
+          startIcon={<AssessmentIcon />}
+          onClick={() => setShowFinancialReport(true)}
+          sx={{
+            backgroundColor: '#10b981',
+            '&:hover': { backgroundColor: '#059669' },
+            borderRadius: 2,
+            fontWeight: 600,
+            px: 3,
+            py: 1,
+            boxShadow: '0 2px 8px rgba(16, 185, 129, 0.2)'
+          }}
+        >
+          Generate Financial Statement
+        </Button>
+      </Box>
       <DialogContent sx={{ p: { xs: 2, sm: 4, md: 5 }, background: 'none', minHeight: 320, mt: 1.5 }}>
         {loading ? (
           <Box sx={{ p: 5, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 320 }}>
@@ -325,6 +348,15 @@ export default function PaymentHistoryDialog({ open, onClose, loading, error, pa
           </Typography>
         </Box>
       </Dialog>
+
+      {/* Financial Report Dialog */}
+      <StudentFinancialReport
+        open={showFinancialReport}
+        onClose={() => setShowFinancialReport(false)}
+        student={student}
+        payments={payments}
+        formatDateDMY={formatDateDMY}
+      />
     </Dialog>
   );
 } 
