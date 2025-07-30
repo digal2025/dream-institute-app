@@ -33,11 +33,6 @@ export const API_ENDPOINTS = {
   STUDENT_LOGIN: '/api/student/login',
   STUDENT_RESET_PASSWORD: '/api/student/reset-password-request',
   
-  // Token endpoints
-  TOKEN_STATUS: '/api/token/status',
-  
-  // OAuth
-  ZOHO_AUTH: '/auth/zoho',
   
   // Dashboard data
   CUSTOMERS: '/api/mongo/customers',

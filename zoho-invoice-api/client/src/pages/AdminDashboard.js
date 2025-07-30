@@ -20,7 +20,7 @@ import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import CloseIcon from '@mui/icons-material/Close';
-import TokenManager from '../TokenManager';
+
 import AddCustomerDialog from '../components/dialogs/AddCustomerDialog';
 import Button from '@mui/material/Button';
 import AddPaymentDialog from '../components/dialogs/AddPaymentDialog';
@@ -45,7 +45,7 @@ import Typography from '@mui/material/Typography';
 import { useAuth } from '../context/AuthContext';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
-import TokenManagerDialog from '../components/dialogs/TokenManagerDialog';
+
 import LogoutIcon from '@mui/icons-material/Logout';
 import Paper from '@mui/material/Paper';
 import Table from '@mui/material/Table';
@@ -397,7 +397,7 @@ function EditStudentDialog({ open, onClose, students, onStudentUpdated, onNotify
 function AdminDashboard() {
   // --- High-level state only ---
   const [search, setSearch] = useState('');
-  const [tokenDialogOpen, setTokenDialogOpen] = useState(false);
+
   const [progress, setProgress] = useState(0);
   const [targetProgress, setTargetProgress] = useState(0);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -737,7 +737,7 @@ function AdminDashboard() {
 
   // User state
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
-  const [profileTab, setProfileTab] = useState(0);
+
 
   // --- Render ---
   return (
@@ -952,40 +952,7 @@ function AdminDashboard() {
         onStudentUpdated={() => setStudentUpdated(true)} 
         onNotify={handleNotify}
       />
-      {/* // Token Manager   */}
-      <Dialog open={tokenDialogOpen} onClose={() => setTokenDialogOpen(false)} maxWidth="md" fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: 4,
-            background: 'linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%)',
-            p: 0
-          }
-        }}
-      >
-        <DialogTitle sx={{ fontWeight: 700, fontSize: 22, color: '#333', background: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, borderBottom: '1px solid #e0e7ff', position: 'relative', px: 4, py: 2, letterSpacing: 0.5 }}>
-          Zoho Token Manager
-          <IconButton
-            aria-label="close"
-            onClick={() => setTokenDialogOpen(false)}
-            sx={{ position: 'absolute', right: 12, top: 12, zIndex: 2 }}
-            size="small"
-          >
-            <CloseIcon fontSize="small" />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent sx={{
-          width: 'fit-content',
-          maxWidth: '50vw',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 3,
-          p: { xs: 4, sm: 6 }
-        }}>
-          <TokenManager />
-        </DialogContent>
-      </Dialog>
+
       {/* Profile Dialog */}
       <Dialog open={profileDialogOpen} onClose={() => setProfileDialogOpen(false)} maxWidth="xs" fullWidth>
         <Paper elevation={6} sx={{ borderRadius: 4, p: 0, background: 'linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%)', boxShadow: '0 8px 32px 0 rgba(99,102,241,0.10)', position: 'relative', px: { xs: 2, sm: 4 }, py: { xs: 2, sm: 3 } }}>
@@ -996,25 +963,15 @@ function AdminDashboard() {
             <Box sx={{ width: 90, height: 90, borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1 0%, #818CF8 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 16px #6366f144', mb: 2 }}>
               <AccountCircleIcon sx={{ fontSize: 60, color: '#fff' }} />
             </Box>
-            <Tabs value={profileTab} onChange={(_, v) => setProfileTab(v)} centered sx={{ mb: 2 }}>
-              <Tab label="Profile" sx={{ fontWeight: 700, fontSize: 16, minWidth: 120 }} />
-              <Tab label="Zoho Token Manager" sx={{ fontWeight: 700, fontSize: 16, minWidth: 180 }} />
-            </Tabs>
-            {profileTab === 0 && (
-              <Box sx={{ width: '100%', px: 3, py: 1 }}>
-                <Typography variant="h6" sx={{ fontWeight: 700, color: '#6366f1', mb: 2, textAlign: 'center' }}>User Details</Typography>
-                <Typography sx={{ fontSize: 16, mb: 1 }}><b>Name:</b> {currentUser?.name || 'N/A'}</Typography>
-                <Typography sx={{ fontSize: 16, mb: 1 }}><b>Email:</b> {currentUser?.email || 'N/A'}</Typography>
-                <Button onClick={logout} fullWidth variant="outlined" color="error" sx={{ fontWeight: 700, borderRadius: 2.5, px: 3, py: 1.2, textTransform: 'none', borderColor: '#ef4444', color: '#ef4444', '&:hover': { borderColor: '#dc2626', backgroundColor: '#fef2f2', color: '#dc2626' }, mt: 2 }}>
-                  <LogoutIcon sx={{ fontSize: 22, mr: 1 }} /> Logout
-                </Button>
-              </Box>
-            )}
-            {profileTab === 1 && (
-              <Box sx={{ width: '100%', px: 0, py: 1 }}>
-                <TokenManagerDialog inDialog={true} />
-              </Box>
-            )}
+            <Box sx={{ width: '100%', px: 3, py: 1 }}>
+              <Typography variant="h6" sx={{ fontWeight: 700, color: '#6366f1', mb: 2, textAlign: 'center' }}>User Details</Typography>
+              <Typography sx={{ fontSize: 16, mb: 1 }}><b>Name:</b> {currentUser?.name || 'N/A'}</Typography>
+              <Typography sx={{ fontSize: 16, mb: 1 }}><b>Email:</b> {currentUser?.email || 'N/A'}</Typography>
+              <Button onClick={logout} fullWidth variant="outlined" color="error" sx={{ fontWeight: 700, borderRadius: 2.5, px: 3, py: 1.2, textTransform: 'none', borderColor: '#ef4444', color: '#ef4444', '&:hover': { borderColor: '#dc2626', backgroundColor: '#fef2f2', color: '#dc2626' }, mt: 2 }}>
+                <LogoutIcon sx={{ fontSize: 22, mr: 1 }} /> Logout
+              </Button>
+            </Box>
+
           </Box>
         </Paper>
       </Dialog>
