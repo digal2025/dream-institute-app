@@ -8,7 +8,8 @@ export default function AddCustomerDialog({ open, onClose, onSuccess, onNotify }
     email: '',
     phone: '',
     cf_pgdca_course: '',
-    cf_batch_name: ''
+    cf_batch_name: '',
+    status: 'in_progress'
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -313,6 +314,37 @@ export default function AddCustomerDialog({ open, onClose, onSuccess, onNotify }
               <Alert severity="success" sx={{ mt: 2 }}>{success}</Alert>
             )}
           </Box>
+          <TextField 
+            label="Student Status" 
+            name="status" 
+            value={form.status} 
+            onChange={handleChange} 
+            select
+            required
+            fullWidth
+            InputLabelProps={{ sx: { fontWeight: 400, color: '#6366f1', fontSize: 16 } }}
+            sx={{
+              mb: 2,
+              background: '#f8fafc',
+              borderRadius: 2,
+              boxShadow: '0 1px 4px #e0e7ff',
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 2,
+                fontSize: 17,
+                fontWeight: 500,
+                color: '#222',
+                background: '#f8fafc',
+                '& fieldset': { borderColor: '#e0e7ff' },
+                '&:hover fieldset': { borderColor: '#6366f1' },
+                '&.Mui-focused fieldset': { borderColor: '#6366f1', borderWidth: 2 },
+              },
+            }}
+          >
+            <MenuItem value="in_progress">In Progress</MenuItem>
+            <MenuItem value="completed">Completed</MenuItem>
+            <MenuItem value="dropped">Dropped</MenuItem>
+            <MenuItem value="on_hold">On Hold</MenuItem>
+          </TextField>
           {error && <Box sx={{ color: 'red', fontWeight: 600 }}>{error}</Box>}
         </Box>
       </DialogContent>

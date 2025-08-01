@@ -27,7 +27,7 @@ import StudentFinancialReport from './StudentFinancialReport';
  * - student: object|null
  * - formatDateDMY: function
  */
-export default function PaymentHistoryDialog({ open, onClose, loading, error, payments, student, formatDateDMY, onPaymentDeleted, onPaymentUpdated, onNotify }) {
+export default function PaymentHistoryDialog({ open, onClose, loading, error, payments, student, currentUser, formatDateDMY, onPaymentDeleted, onPaymentUpdated, onNotify }) {
   const [deletingId, setDeletingId] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [editValues, setEditValues] = useState({});
@@ -40,7 +40,19 @@ export default function PaymentHistoryDialog({ open, onClose, loading, error, pa
   const handleDelete = async (paymentId) => {
     setDeletingId(paymentId);
     try {
-      const res = await fetch(`/api/mongo/payments/${paymentId}`, { method: 'DELETE' });
+      const token = localStorage.getItem('token');
+      const res = await fetch(`/api/mongo/payments/${paymentId}`, { 
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to delete payment');
+      }
+      
       await res.json();
       setDeletingId(null);
       setConfirmDeleteId(null);
@@ -49,7 +61,7 @@ export default function PaymentHistoryDialog({ open, onClose, loading, error, pa
     } catch (err) {
       setDeletingId(null);
       setConfirmDeleteId(null);
-      alert('Failed to delete payment.');
+      alert(`Failed to delete payment: ${err.message}`);
     }
   };
 
@@ -274,9 +286,11 @@ export default function PaymentHistoryDialog({ open, onClose, loading, error, pa
                               <IconButton color="primary" size="small" onClick={() => handlePrintReceipt(p)} title="Print Receipt">
                                 <PictureAsPdfIcon />
                               </IconButton>
-                              <IconButton color="error" size="small" onClick={() => setConfirmDeleteId(p._id || p.payment_id)} disabled={deletingId === (p._id || p.payment_id) || editingId === (p._id || p.payment_id)}>
-                                {deletingId === (p._id || p.payment_id) ? <CircularProgress size={18} /> : <DeleteIcon />}
-                              </IconButton>
+                              {currentUser && currentUser.role === 'super_admin' && (
+                                <IconButton color="error" size="small" onClick={() => setConfirmDeleteId(p._id || p.payment_id)} disabled={deletingId === (p._id || p.payment_id) || editingId === (p._id || p.payment_id)}>
+                                  {deletingId === (p._id || p.payment_id) ? <CircularProgress size={18} /> : <DeleteIcon />}
+                                </IconButton>
+                              )}
                             </TableCell>
                           </TableRow>
                         );

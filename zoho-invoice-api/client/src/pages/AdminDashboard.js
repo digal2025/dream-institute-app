@@ -1,5 +1,6 @@
 // App.js - Main dashboard for Fee Management (restored from GitHub)
 import React, { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { DataGrid } from '@mui/x-data-grid';
 import IconButton from '@mui/material/IconButton';
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -32,6 +33,8 @@ import Autocomplete from '@mui/material/Autocomplete';
 import MuiDialog from '@mui/material/Dialog';
 import InputLabel from '@mui/material/InputLabel';
 import FormControl from '@mui/material/FormControl';
+import Select from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
 import Alert from '@mui/material/Alert';
 import DialogActions from '@mui/material/DialogActions';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -42,7 +45,6 @@ import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import DialogContentText from '@mui/material/DialogContentText';
 import Avatar from '@mui/material/Avatar';
 import Typography from '@mui/material/Typography';
-import { useAuth } from '../context/AuthContext';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 
@@ -81,7 +83,7 @@ function formatNotificationDate(date) {
 // Modern Edit Student Dialog
 function EditStudentDialog({ open, onClose, students, onStudentUpdated, onNotify }) {
   const [selectedStudent, setSelectedStudent] = useState(null);
-  const [form, setForm] = useState({ name: '', email: '', phone: '', cf_pgdca_course: '', cf_batch_name: '' });
+  const [form, setForm] = useState({ name: '', email: '', phone: '', cf_pgdca_course: '', cf_batch_name: '', status: 'in_progress' });
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(null);
   const [error, setError] = useState(null);
@@ -111,7 +113,8 @@ function EditStudentDialog({ open, onClose, students, onStudentUpdated, onNotify
               email: data.customer.email || '',
               phone: data.customer.phone || '',
               cf_pgdca_course: data.customer.cf_pgdca_course || '',
-              cf_batch_name: data.customer.cf_batch_name || ''
+              cf_batch_name: data.customer.cf_batch_name || '',
+              status: data.customer.status || 'in_progress'
             });
           }
         } catch (err) {}
@@ -140,7 +143,8 @@ function EditStudentDialog({ open, onClose, students, onStudentUpdated, onNotify
           email: form.email,
           phone: form.phone,
           cf_pgdca_course: form.cf_pgdca_course,
-          cf_batch_name: form.cf_batch_name
+          cf_batch_name: form.cf_batch_name,
+          status: form.status
         })
       });
       const data = await response.json();
@@ -160,7 +164,7 @@ function EditStudentDialog({ open, onClose, students, onStudentUpdated, onNotify
 
   const handleClose = () => {
     setSelectedStudent(null);
-    setForm({ name: '', email: '', phone: '', cf_pgdca_course: '', cf_batch_name: '' });
+    setForm({ name: '', email: '', phone: '', cf_pgdca_course: '', cf_batch_name: '', status: 'in_progress' });
     setError(null);
     setSuccess(null);
     setShowDeleteConfirm(false);
@@ -268,6 +272,21 @@ function EditStudentDialog({ open, onClose, students, onStudentUpdated, onNotify
           <TextField label="Course" name="cf_pgdca_course" value={form.cf_pgdca_course} onChange={handleChange} fullWidth margin="normal" sx={{ ...textFieldSx, flex: 1 }} />
           <TextField label="Batch" name="cf_batch_name" value={form.cf_batch_name} onChange={handleChange} fullWidth margin="normal" sx={{ ...textFieldSx, flex: 1 }} />
         </Box>
+        <TextField 
+          label="Student Status" 
+          name="status" 
+          value={form.status} 
+          onChange={handleChange} 
+          select
+          fullWidth 
+          margin="normal" 
+          sx={textFieldSx}
+        >
+          <MenuItem value="in_progress">In Progress</MenuItem>
+          <MenuItem value="completed">Completed</MenuItem>
+          <MenuItem value="dropped">Dropped</MenuItem>
+          <MenuItem value="on_hold">On Hold</MenuItem>
+        </TextField>
         {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
         {success && <Alert severity="success" sx={{ mt: 2 }}>{success}</Alert>}
       </DialogContent>
@@ -395,8 +414,10 @@ function EditStudentDialog({ open, onClose, students, onStudentUpdated, onNotify
 
 // AdminDashboard (was MainDashboard)
 function AdminDashboard() {
+  const { user } = useAuth(); // Get current logged-in user
   // --- High-level state only ---
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   const [progress, setProgress] = useState(0);
   const [targetProgress, setTargetProgress] = useState(0);
@@ -416,7 +437,7 @@ function AdminDashboard() {
   // Admin User Management Dialog state
   const [adminDialogOpen, setAdminDialogOpen] = useState(false);
   const [adminTab, setAdminTab] = useState(0);
-  const [adminForm, setAdminForm] = useState({ name: '', email: '', password: '', confirmPassword: '' });
+  const [adminForm, setAdminForm] = useState({ name: '', email: '', password: '', confirmPassword: '', role: 'admin' });
   const [adminLoading, setAdminLoading] = useState(false);
   const [adminError, setAdminError] = useState(null);
   const [adminSuccess, setAdminSuccess] = useState(null);
@@ -449,10 +470,15 @@ function AdminDashboard() {
 
   // --- Data processing and selectors ---
   const { filteredStudents, paymentMap, monthsWithCurrent } = getFilteredStudents({ students, paymentsByMonth, months, search, invoices });
-  const paymentTotals = getPaymentTotals({ filteredStudents, paymentsByMonth, monthsWithCurrent });
-  const totalRow = getTotalRow({ filteredStudents, paymentTotals, monthsWithCurrent });
-  const rowsWithTotal = [...filteredStudents, totalRow];
-  const { paidCount, unpaidCount, totalPaidThisMonth, totalOutstandingUnpaid, lastMonthPaidCount, totalPaidLastMonth } = getDashboardKPIs({ students, paymentsByMonth, months });
+  
+  // Apply status filter
+  const statusFilteredStudents = statusFilter === 'all' 
+    ? filteredStudents 
+    : filteredStudents.filter(student => student.status === statusFilter);
+  const paymentTotals = getPaymentTotals({ filteredStudents: statusFilteredStudents, paymentsByMonth, monthsWithCurrent });
+  const totalRow = getTotalRow({ filteredStudents: statusFilteredStudents, paymentTotals, monthsWithCurrent });
+  const rowsWithTotal = [...statusFilteredStudents, totalRow];
+  const { paidCount, unpaidCount, totalPaidThisMonth, totalOutstandingUnpaid, lastMonthPaidCount, totalPaidLastMonth } = getDashboardKPIs({ students: statusFilteredStudents, paymentsByMonth, months });
   const { styledColumns } = getGridColumns({
     monthsWithCurrent,
     paymentMap,
@@ -634,7 +660,8 @@ function AdminDashboard() {
         body: JSON.stringify({
           name: adminForm.name.trim(),
           email: adminForm.email.trim(),
-          password: adminForm.password
+          password: adminForm.password,
+          role: adminForm.role
         })
       });
 
@@ -644,7 +671,7 @@ function AdminDashboard() {
         setAdminSuccess('Admin user created successfully!');
         handleNotify({ message: `Created new admin user: ${adminForm.name}.` });
         // Reset form
-        setAdminForm({ name: '', email: '', password: '', confirmPassword: '' });
+        setAdminForm({ name: '', email: '', password: '', confirmPassword: '', role: 'admin' });
         // Refresh admin users list
         fetchAdminUsers();
         // Close dialog after a short delay
@@ -671,7 +698,7 @@ function AdminDashboard() {
   const handleCloseAdminDialog = () => {
     setAdminDialogOpen(false);
     setAdminTab(0);
-    setAdminForm({ name: '', email: '', password: '', confirmPassword: '' });
+    setAdminForm({ name: '', email: '', password: '', confirmPassword: '', role: 'admin' });
     setAdminError(null);
     setAdminSuccess(null);
   };
@@ -834,7 +861,7 @@ function AdminDashboard() {
       {/* KPI Cards Row */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32 }}>
         <div style={{ display: 'flex', gap: 32 }}>
-          <KpiCard title="Total Students" value={students.length} subtitle={`as of ${new Date().toLocaleDateString()}`} color="#0ea5e9" />
+          <KpiCard title="Total Students" value={students.filter(student => student.status === 'in_progress').length} subtitle={`active students as of ${new Date().toLocaleDateString()}`} color="#0ea5e9" />
           <KpiCard title="Paid This Month" value={paymentsLoading ? 'Loading...' : `₹${totalPaidThisMonth.toLocaleString()}`}
             subtitle={paymentsLoading ? '' : `${paidCount} students paid`}
             color="#6366f1" />
@@ -865,7 +892,7 @@ function AdminDashboard() {
         </div>
       </div>
       <div style={{ background: '#fff', borderRadius: 12, padding: 24, boxShadow: '0 2px 8px #e0e7ff', width: '100%', minWidth: 320, boxSizing: 'border-box' }}>
-        {/* Search bar and Add/Edit Customer buttons */}
+        {/* Search bar, Status filter, and Add/Edit Customer buttons */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
           <TextField
             variant="outlined"
@@ -899,6 +926,33 @@ function AdminDashboard() {
               )
             }}
           />
+          <FormControl sx={{ minWidth: 200 }}>
+            <InputLabel sx={{ fontWeight: 400, color: '#6366f1', fontSize: 16 }}>
+              Filter by Status
+            </InputLabel>
+            <Select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              label="Filter by Status"
+              sx={{
+                borderRadius: 2,
+                fontSize: 17,
+                fontWeight: 500,
+                color: '#222',
+                background: '#f8fafc',
+                '& fieldset': { borderColor: '#e0e7ff' },
+                '&:hover fieldset': { borderColor: '#6366f1' },
+                '&.Mui-focused fieldset': { borderColor: '#6366f1', borderWidth: 2 },
+                boxShadow: '0 1px 4px #e0e7ff',
+              }}
+            >
+              <MenuItem value="all">All Students</MenuItem>
+              <MenuItem value="in_progress">In Progress</MenuItem>
+              <MenuItem value="completed">Completed</MenuItem>
+              <MenuItem value="dropped">Dropped</MenuItem>
+              <MenuItem value="on_hold">On Hold</MenuItem>
+            </Select>
+          </FormControl>
           <Button variant="contained" color="primary" onClick={() => setAddDialogOpen(true)} sx={{ fontWeight: 700, borderRadius: 2, fontSize: 16, px: 3, py: 1.2 }}>
             Add Student
           </Button>
@@ -1001,14 +1055,23 @@ function AdminDashboard() {
         error={dialogError}
         payments={dialogPayments}
         student={dialogStudent}
+        currentUser={user}
         formatDateDMY={formatDateDMY}
         onPaymentDeleted={() => {
           refreshDialogPayments();
           setPaymentUpdatedInDialog(true);
+          // Add small delay to ensure backend deletion completes
+          setTimeout(() => {
+            refetchAll(); // Refresh all data to update KPIs immediately
+          }, 100);
         }}
         onPaymentUpdated={() => {
           refreshDialogPayments();
           setPaymentUpdatedInDialog(true);
+          // Add small delay to ensure backend update completes
+          setTimeout(() => {
+            refetchAll(); // Refresh all data to update KPIs immediately
+          }, 100);
         }}
         onNotify={handleNotify}
       />
@@ -1037,7 +1100,13 @@ function AdminDashboard() {
           }
         }} 
         students={allStudents} 
-        onStudentUpdated={() => setStudentUpdated(true)} 
+        onStudentUpdated={() => {
+          setStudentUpdated(true);
+          // Add small delay to ensure backend cascade delete completes
+          setTimeout(() => {
+            refetchAll(); // Refresh all data to update KPIs immediately
+          }, 100);
+        }} 
         onNotify={handleNotify}
       />
 
@@ -1349,6 +1418,15 @@ function AdminDashboard() {
                           background: '#f8fafc',
                           borderBottom: '2px solid #e0e7ff'
                         }}>
+                          Role
+                        </TableCell>
+                        <TableCell sx={{ 
+                          fontWeight: 700, 
+                          fontSize: 16, 
+                          color: '#6366f1', 
+                          background: '#f8fafc',
+                          borderBottom: '2px solid #e0e7ff'
+                        }}>
                           Created Date
                         </TableCell>
                         <TableCell sx={{ 
@@ -1391,6 +1469,15 @@ function AdminDashboard() {
                             borderBottom: '1px solid #e0e7ff'
                           }}>
                             {user.email}
+                          </TableCell>
+                          <TableCell sx={{ 
+                            fontSize: 14, 
+                            color: '#f59e0b',
+                            fontWeight: 600,
+                            borderBottom: '1px solid #e0e7ff',
+                            textTransform: 'capitalize'
+                          }}>
+                            {user.role || 'admin'}
                           </TableCell>
                           <TableCell sx={{ 
                             fontSize: 14, 
@@ -1602,6 +1689,63 @@ function AdminDashboard() {
                   />
                 </Grid>
               </Grid>
+
+              {/* Role Selection - Only visible to super admin */}
+              {user && user.email === 'gitudigal@outlook.com' && (
+                <Grid container spacing={2} sx={{ mb: 2 }}>
+                  <Grid item xs={12} md={6}>
+                    <FormControl fullWidth margin="normal" sx={{
+                      background: '#fff',
+                      borderRadius: 2,
+                      boxShadow: '0 1px 4px #e0e7ff',
+                    }}>
+                      <InputLabel sx={{ fontWeight: 400, color: '#6366f1', fontSize: 16 }}>
+                        Role
+                      </InputLabel>
+                      <Select
+                        name="role"
+                        value={adminForm.role}
+                        onChange={handleAdminFormChange}
+                        label="Role"
+                        sx={{
+                          borderRadius: 2,
+                          fontSize: 17,
+                          fontWeight: 500,
+                          color: '#222',
+                          background: '#fff',
+                          '& fieldset': { borderColor: '#e0e7ff' },
+                          '&:hover fieldset': { borderColor: '#6366f1' },
+                          '&.Mui-focused fieldset': { borderColor: '#6366f1', borderWidth: 2 },
+                        }}
+                      >
+                        <MenuItem value="admin">Admin</MenuItem>
+                        <MenuItem value="super_admin">Super Admin</MenuItem>
+                        <MenuItem value="manager">Manager</MenuItem>
+                        <MenuItem value="operator">Operator</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Box sx={{ 
+                      background: '#f8fafc', 
+                      borderRadius: 2, 
+                      p: 2, 
+                      mt: 2,
+                      border: '1px solid #e0e7ff'
+                    }}>
+                      <Typography variant="body2" sx={{ color: '#6366f1', fontWeight: 600, mb: 1 }}>
+                        Role Descriptions:
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: '#6b7280', display: 'block' }}>
+                        • <strong>Admin:</strong> Standard admin access<br/>
+                        • <strong>Super Admin:</strong> Full system control<br/>
+                        • <strong>Manager:</strong> Limited admin access<br/>
+                        • <strong>Operator:</strong> Basic operations only
+                      </Typography>
+                    </Box>
+                  </Grid>
+                </Grid>
+              )}
 
               {adminError && <Alert severity="error" sx={{ mt: 2, borderRadius: 2 }}>{adminError}</Alert>}
               {adminSuccess && <Alert severity="success" sx={{ mt: 2, borderRadius: 2 }}>{adminSuccess}</Alert>}

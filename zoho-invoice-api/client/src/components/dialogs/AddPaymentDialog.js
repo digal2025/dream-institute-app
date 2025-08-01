@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Box, CircularProgress, MenuItem, Autocomplete } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Box, CircularProgress, MenuItem, Autocomplete, Select, FormControl, InputLabel } from '@mui/material';
 
 export default function AddPaymentDialog({ open, onClose, onSuccess, onNotify }) {
   const [form, setForm] = useState({
@@ -199,19 +199,20 @@ export default function AddPaymentDialog({ open, onClose, onSuccess, onNotify })
               }}
             />
           </Box>
-          <TextField
-            label="Payment Mode"
-            name="payment_mode"
-            value={form.payment_mode}
-            onChange={handleChange}
-            required
-            fullWidth
-            InputLabelProps={{ sx: { fontWeight: 400, color: '#6366f1', fontSize: 16 } }}
-            sx={{
-              background: '#f8fafc',
-              borderRadius: 2,
-              boxShadow: '0 1px 4px #e0e7ff',
-              '& .MuiOutlinedInput-root': {
+          <FormControl fullWidth required sx={{
+            background: '#f8fafc',
+            borderRadius: 2,
+            boxShadow: '0 1px 4px #e0e7ff',
+          }}>
+            <InputLabel sx={{ fontWeight: 400, color: '#6366f1', fontSize: 16 }}>
+              Payment Mode
+            </InputLabel>
+            <Select
+              name="payment_mode"
+              value={form.payment_mode}
+              onChange={handleChange}
+              label="Payment Mode"
+              sx={{
                 borderRadius: 2,
                 fontSize: 17,
                 fontWeight: 500,
@@ -220,9 +221,12 @@ export default function AddPaymentDialog({ open, onClose, onSuccess, onNotify })
                 '& fieldset': { borderColor: '#e0e7ff' },
                 '&:hover fieldset': { borderColor: '#6366f1' },
                 '&.Mui-focused fieldset': { borderColor: '#6366f1', borderWidth: 2 },
-              },
-            }}
-          />
+              }}
+            >
+              <MenuItem value="Cash">Cash</MenuItem>
+              <MenuItem value="UPI">UPI</MenuItem>
+            </Select>
+          </FormControl>
           <TextField
             label="Reference"
             name="reference_number"
