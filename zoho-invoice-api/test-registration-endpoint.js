@@ -71,7 +71,7 @@ async function testRegistrationEndpoint() {
     console.error('Error:', error.message);
     console.error('Stack:', error.stack);
   } finally {
-    mongoose.connection.close();
+    await mongoose.connection.close();
   }
 }
 
