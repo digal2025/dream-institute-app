@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { DataGrid } from '@mui/x-data-grid';
 import IconButton from '@mui/material/IconButton';
-import SettingsIcon from '@mui/icons-material/Settings';
+// import SettingsIcon from '@mui/icons-material/Settings';
 import InputAdornment from '@mui/material/InputAdornment';
 import ClearIcon from '@mui/icons-material/Clear';
 import CustomGridLoadingOverlay from '../components/layout/CustomGridLoadingOverlay';
@@ -478,7 +478,7 @@ function AdminDashboard() {
   const paymentTotals = getPaymentTotals({ filteredStudents: statusFilteredStudents, paymentsByMonth, monthsWithCurrent });
   const totalRow = getTotalRow({ filteredStudents: statusFilteredStudents, paymentTotals, monthsWithCurrent });
   const rowsWithTotal = [...statusFilteredStudents, totalRow];
-  const { paidCount, unpaidCount, totalPaidThisMonth, totalOutstandingUnpaid, lastMonthPaidCount, totalPaidLastMonth } = getDashboardKPIs({ students: statusFilteredStudents, paymentsByMonth, months });
+  const { paidCount, totalPaidThisMonth, lastMonthPaidCount, totalPaidLastMonth } = getDashboardKPIs({ students: statusFilteredStudents, paymentsByMonth, months });
   const { styledColumns } = getGridColumns({
     monthsWithCurrent,
     paymentMap,

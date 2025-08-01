@@ -7,7 +7,7 @@ WORKDIR /app
 # Copy client package files and build frontend
 COPY zoho-invoice-api/client/package*.json ./client/
 WORKDIR /app/client
-RUN npm ci --only=production
+RUN npm ci --omit=dev
 COPY zoho-invoice-api/client/ .
 RUN npm run build
 
@@ -27,7 +27,7 @@ RUN addgroup -g 1001 -S nodejs && \
 # Copy backend package files and install dependencies
 # Cache bust: bcryptjs and jsonwebtoken added - 2025-07-29
 COPY zoho-invoice-api/package*.json ./
-RUN npm ci --production && npm cache clean --force
+RUN npm ci --omit=dev && npm cache clean --force
 
 # Copy backend application code
 COPY zoho-invoice-api/ ./
