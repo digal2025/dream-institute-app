@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "build": "cd client && npm install --omit=dev && npm run build",
+    "build": "cd client && npm install --omit=dev --no-audit --no-fund && CI=false DISABLE_ESLINT_PLUGIN=true GENERATE_SOURCEMAP=false NODE_OPTIONS='--max-old-space-size=4096' npm run build",
     "dev": "nodemon index.js",
     "test": "jest",
     "test:watch": "jest --watch",

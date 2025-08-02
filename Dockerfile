@@ -4,11 +4,24 @@ FROM node:18-alpine AS builder
 # Set working directory
 WORKDIR /app
 
+# Set environment variables for build
+ENV NODE_ENV=production
+ENV CI=false
+ENV DISABLE_ESLINT_PLUGIN=true
+ENV GENERATE_SOURCEMAP=false
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+
 # Copy client package files and build frontend
 COPY zoho-invoice-api/client/package*.json ./client/
 WORKDIR /app/client
-RUN npm ci --omit=dev
+
+# Install dependencies with production optimizations
+RUN npm ci --omit=dev --no-audit --no-fund
+
+# Copy client source code
 COPY zoho-invoice-api/client/ .
+
+# Build the React application
 RUN npm run build
 
 # Production stage
@@ -25,9 +38,8 @@ RUN addgroup -g 1001 -S nodejs && \
     adduser -S nextjs -u 1001
 
 # Copy backend package files and install dependencies
-# Cache bust: bcryptjs and jsonwebtoken added - 2025-07-29
 COPY zoho-invoice-api/package*.json ./
-RUN npm ci --omit=dev && npm cache clean --force
+RUN npm ci --omit=dev --no-audit --no-fund && npm cache clean --force
 
 # Copy backend application code
 COPY zoho-invoice-api/ ./

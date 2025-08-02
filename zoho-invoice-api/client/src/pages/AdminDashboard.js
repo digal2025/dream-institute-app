@@ -417,7 +417,7 @@ function AdminDashboard() {
   const { user } = useAuth(); // Get current logged-in user
   // --- High-level state only ---
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('in_progress');
 
   const [progress, setProgress] = useState(0);
   const [targetProgress, setTargetProgress] = useState(0);
