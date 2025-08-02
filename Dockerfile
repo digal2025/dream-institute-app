@@ -1,4 +1,4 @@
-# Single-stage production build
+# Optimized single-stage production build
 FROM node:18-alpine
 
 # Install curl for health checks
@@ -14,18 +14,20 @@ ENV DISABLE_ESLINT_PLUGIN=true
 ENV GENERATE_SOURCEMAP=false
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 
-# Copy package files
+# Copy only package files first for better caching
 COPY package*.json ./
 COPY zoho-invoice-api/package*.json ./zoho-invoice-api/
 COPY zoho-invoice-api/client/package*.json ./zoho-invoice-api/client/
 
-# Install dependencies
-RUN npm ci --omit=dev --no-audit --no-fund
-RUN cd zoho-invoice-api && npm ci --omit=dev --no-audit --no-fund
-RUN cd zoho-invoice-api/client && npm ci --omit=dev --no-audit --no-fund
+# Install dependencies with optimizations
+RUN npm ci --omit=dev --no-audit --no-fund --prefer-offline
+RUN cd zoho-invoice-api && npm ci --omit=dev --no-audit --no-fund --prefer-offline
+RUN cd zoho-invoice-api/client && npm ci --omit=dev --no-audit --no-fund --prefer-offline
 
-# Copy source code
-COPY . .
+# Copy source code (excluding node_modules and build artifacts)
+COPY zoho-invoice-api/ ./zoho-invoice-api/
+COPY .dockerignore ./
+COPY debug-startup.sh ./
 
 # Build the React application
 RUN cd zoho-invoice-api/client && npm run build
