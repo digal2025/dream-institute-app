@@ -58,7 +58,7 @@ COPY zoho-invoice-api/ ./
 # Copy built frontend from builder stage
 COPY --from=builder /app/zoho-invoice-api/client/build ./client/build
 
-# Copy debug script
+# Copy debug script and set permissions
 COPY debug-startup.sh ./
 RUN chmod +x debug-startup.sh
 
