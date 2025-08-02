@@ -965,9 +965,11 @@ function AdminDashboard() {
           <Button variant="contained" color="warning" onClick={() => setSmsDialogOpen(true)} sx={{ fontWeight: 700, borderRadius: 2, fontSize: 16, px: 3, py: 1.2, background: '#f59e42', '&:hover': { background: '#d97706' } }}>
             Fee Reminder
           </Button>
-          <Button variant="contained" color="info" onClick={() => setAdminDialogOpen(true)} sx={{ fontWeight: 700, borderRadius: 2, fontSize: 16, px: 3, py: 1.2, background: '#06b6d4', '&:hover': { background: '#0891b2' } }}>
-            Admin Users
-          </Button>
+          {user && user.role === 'super_admin' && (
+            <Button variant="contained" color="info" onClick={() => setAdminDialogOpen(true)} sx={{ fontWeight: 700, borderRadius: 2, fontSize: 16, px: 3, py: 1.2, background: '#06b6d4', '&:hover': { background: '#0891b2' } }}>
+              Admin Users
+            </Button>
+          )}
           <Button variant="contained" color="success" onClick={refetchAll} sx={{ fontWeight: 700, borderRadius: 2, fontSize: 16, px: 2, py: 1.2, background: '#10b981', '&:hover': { background: '#059669' }, minWidth: 'auto' }}>
             <RefreshIcon sx={{ fontSize: 20 }} />
           </Button>
@@ -1340,8 +1342,9 @@ function AdminDashboard() {
         </div>
       </Drawer>
 
-      {/* Admin User Management Dialog */}
-      <Dialog open={adminDialogOpen} onClose={handleCloseAdminDialog} maxWidth="md" fullWidth
+      {/* Admin User Management Dialog - Only visible to super_admin */}
+      {user && user.role === 'super_admin' && (
+        <Dialog open={adminDialogOpen} onClose={handleCloseAdminDialog} maxWidth="md" fullWidth
         PaperProps={{
           sx: {
             borderRadius: 4,
@@ -1799,6 +1802,7 @@ function AdminDashboard() {
           )}
         </DialogActions>
       </Dialog>
+      )}
 
       {/* Delete Confirmation Dialog */}
       <Dialog 
