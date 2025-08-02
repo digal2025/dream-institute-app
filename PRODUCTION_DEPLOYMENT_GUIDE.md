@@ -15,9 +15,9 @@ Go to your GitHub repository → Settings → Secrets and variables → Actions,
 
 #### Required Secrets:
 ```bash
-DOCKERHUB_USERNAME=your_dockerhub_username
-DOCKERHUB_TOKEN=your_dockerhub_access_token
-DOKPLOY_DOMAIN=your_dokploy_domain
+DOCKERHUB_USERNAME=dockerhub_username
+DOCKERHUB_TOKEN=your_dockerhub_token
+DOKPLOY_DOMAIN=srv926653.hstgr.cloud
 DOKPLOY_API_KEY=your_dokploy_api_key
 DOKPLOY_APP_ID=your_dokploy_application_id
 ```
