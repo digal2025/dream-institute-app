@@ -112,5 +112,5 @@ build.sh
 PRODUCTION_BUILD_GUIDE.md
 DOCKER_TROUBLESHOOTING.md
 
-# Debug files
-debug-startup.sh
+# Debug files (keep debug-startup.sh for Docker build)
+# debug-startup.sh

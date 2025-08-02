@@ -58,10 +58,6 @@ COPY zoho-invoice-api/ ./
 # Copy built frontend from builder stage
 COPY --from=builder /app/zoho-invoice-api/client/build ./client/build
 
-# Copy debug script and set permissions
-COPY debug-startup.sh ./
-RUN chmod +x debug-startup.sh
-
 # Change ownership to non-root user
 RUN chown -R nextjs:nodejs /app
 USER nextjs
@@ -73,5 +69,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 # Expose port
 EXPOSE 3000
 
-# Start the application with debug info
-CMD ["./debug-startup.sh"]
+# Start the application
+CMD ["npm", "start"]
