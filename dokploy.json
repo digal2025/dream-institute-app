@@ -1,9 +1,9 @@
 {
   "build": {
-    "command": "chmod +x build.sh && ./build.sh || (echo 'Build script failed, trying fallback...' && npm install --omit=dev --no-audit --no-fund && cd zoho-invoice-api && npm install --omit=dev --no-audit --no-fund && cd client && npm install --omit=dev --no-audit --no-fund && CI=false DISABLE_ESLINT_PLUGIN=true GENERATE_SOURCEMAP=false NODE_OPTIONS='--max-old-space-size=4096' npm run build)"
+    "command": "npm install --omit=dev --no-audit --no-fund && cd zoho-invoice-api && npm install --omit=dev --no-audit --no-fund && cd client && npm install --omit=dev --no-audit --no-fund && CI=false DISABLE_ESLINT_PLUGIN=true GENERATE_SOURCEMAP=false NODE_OPTIONS='--max-old-space-size=4096' npm run build"
   },
   "start": {
-    "command": "npm start"
+    "command": "cd zoho-invoice-api && npm start"
   },
   "environment": {
     "NODE_ENV": "production",
