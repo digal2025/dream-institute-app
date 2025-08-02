@@ -26,7 +26,6 @@ RUN cd zoho-invoice-api/client && npm ci --omit=dev --no-audit --no-fund --prefe
 
 # Copy source code (excluding node_modules and build artifacts)
 COPY zoho-invoice-api/ ./zoho-invoice-api/
-COPY .dockerignore ./
 COPY debug-startup.sh ./
 
 # Build the React application
