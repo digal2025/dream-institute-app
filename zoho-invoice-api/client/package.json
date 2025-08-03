@@ -27,7 +27,7 @@
     },
     "scripts": {
         "start": "react-scripts start",
-        "build": "CI=false DISABLE_ESLINT_PLUGIN=true GENERATE_SOURCEMAP=false react-scripts build",
+        "build": "echo 'React build starting...' && CI=false DISABLE_ESLINT_PLUGIN=true GENERATE_SOURCEMAP=false NODE_OPTIONS='--max-old-space-size=8192' react-scripts build && echo 'React build completed'",
         "test": "react-scripts test",
         "test:coverage": "react-scripts test --coverage --watchAll=false",
         "test:ci": "react-scripts test --coverage --watchAll=false --ci",
