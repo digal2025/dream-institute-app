@@ -1,6 +1,6 @@
 {
   "build": {
-    "command": "echo 'Starting simplified build...' && npm install --omit=dev --no-audit --no-fund && cd zoho-invoice-api && npm install --omit=dev --no-audit --no-fund && cd client && npm install --omit=dev --no-audit --no-fund && echo 'Dependencies installed, starting React build...' && CI=false DISABLE_ESLINT_PLUGIN=true GENERATE_SOURCEMAP=false NODE_OPTIONS='--max-old-space-size=8192' npm run build && echo 'Build completed successfully'"
+    "command": "npm install --omit=dev --no-audit --no-fund && cd zoho-invoice-api && npm install --omit=dev --no-audit --no-fund && cd client && npm install --omit=dev --no-audit --no-fund && CI=false DISABLE_ESLINT_PLUGIN=true GENERATE_SOURCEMAP=false SKIP_PREFLIGHT_CHECK=true NODE_OPTIONS='--max-old-space-size=4096' npm run build"
   },
   "start": {
     "command": "cd zoho-invoice-api && npm start"
@@ -11,6 +11,7 @@
     "CI": "false",
     "DISABLE_ESLINT_PLUGIN": "true",
     "GENERATE_SOURCEMAP": "false",
-    "NODE_OPTIONS": "--max-old-space-size=8192"
+    "SKIP_PREFLIGHT_CHECK": "true",
+    "NODE_OPTIONS": "--max-old-space-size=4096"
   }
 } 

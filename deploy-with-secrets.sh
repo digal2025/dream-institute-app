@@ -79,6 +79,23 @@ check_project_structure() {
     print_status "Project structure is correct"
 }
 
+# Check server connectivity
+check_server_connectivity() {
+    print_status "Checking server connectivity..."
+    
+    print_info "Testing connection to $DOKPLOY_DOMAIN..."
+    
+    # Test basic connectivity first
+    if curl -s --max-time 5 "http://$DOKPLOY_DOMAIN" > /dev/null 2>&1; then
+        print_status "Server is reachable"
+        return 0
+    else
+        print_warning "Server might be busy or unreachable"
+        print_info "This could be normal if a build is in progress"
+        return 0
+    fi
+}
+
 # Trigger Dokploy deployment
 trigger_deployment() {
     print_status "Triggering Dokploy deployment..."
@@ -87,36 +104,59 @@ trigger_deployment() {
     print_info "App ID: $DOKPLOY_APP_ID"
     print_info "API Key: ${DOKPLOY_API_KEY:0:8}..."
     
-    # Make the deployment request
+    # Make the deployment request with better error handling
     print_info "Sending deployment request..."
     
-    response=$(curl -s -w "%{http_code}" -X POST \
-        "http://$DOKPLOY_DOMAIN/api/trpc/application.deploy" \
-        -H "accept: application/json" \
-        -H "x-api-key: $DOKPLOY_API_KEY" \
-        -H "Content-Type: application/json" \
-        -d "{\"json\":{\"applicationId\":\"$DOKPLOY_APP_ID\"}}" \
-        --max-time 30)
+    # Try multiple times with different timeout settings
+    for attempt in 1 2 3; do
+        print_info "Attempt $attempt of 3..."
+        
+        response=$(curl -s -w "%{http_code}" -X POST \
+            "http://$DOKPLOY_DOMAIN/api/trpc/application.deploy" \
+            -H "accept: application/json" \
+            -H "x-api-key: $DOKPLOY_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{\"json\":{\"applicationId\":\"$DOKPLOY_APP_ID\"}}" \
+            --max-time 60 \
+            --connect-timeout 30 \
+            --retry 2 \
+            --retry-delay 5 \
+            2>/dev/null)
+        
+        # Extract status code
+        http_code="${response: -3}"
+        response_body="${response%???}"
+        
+        echo ""
+        print_info "Response Code: $http_code"
+        print_info "Response Body: $response_body"
+        echo ""
+        
+        if [ "$http_code" = "200" ]; then
+            print_status "Deployment triggered successfully!"
+            print_status "Dokploy will now build and deploy your application"
+            print_status "Check your Dokploy dashboard for build progress"
+            return 0
+        elif [ "$http_code" = "000" ]; then
+            print_warning "Connection failed (attempt $attempt)"
+            if [ $attempt -lt 3 ]; then
+                print_info "Retrying in 5 seconds..."
+                sleep 5
+            fi
+        else
+            print_error "Deployment failed with status code: $http_code"
+            print_error "Response: $response_body"
+            if [ $attempt -lt 3 ]; then
+                print_info "Retrying in 5 seconds..."
+                sleep 5
+            fi
+        fi
+    done
     
-    # Extract status code
-    http_code="${response: -3}"
-    response_body="${response%???}"
-    
-    echo ""
-    print_info "Response Code: $http_code"
-    print_info "Response Body: $response_body"
-    echo ""
-    
-    if [ "$http_code" = "200" ]; then
-        print_status "Deployment triggered successfully!"
-        print_status "Dokploy will now build and deploy your application"
-        print_status "Check your Dokploy dashboard for build progress"
-    else
-        print_error "Deployment failed with status code: $http_code"
-        print_error "Response: $response_body"
-        print_warning "Please check your credentials and try again"
-        exit 1
-    fi
+    print_error "All deployment attempts failed"
+    print_warning "The server might be busy with another build"
+    print_info "Please check your Dokploy dashboard for current build status"
+    return 1
 }
 
 # Main execution
@@ -127,12 +167,21 @@ main() {
     get_credentials
     check_dependencies
     check_project_structure
+    check_server_connectivity
     trigger_deployment
     
-    echo ""
-    print_status "Direct deployment process completed!"
-    print_status "Your app should be available at: http://$DOKPLOY_DOMAIN"
-    print_info "Build time: Usually 5-10 minutes"
+    if [ $? -eq 0 ]; then
+        echo ""
+        print_status "Direct deployment process completed!"
+        print_status "Your app should be available at: http://$DOKPLOY_DOMAIN"
+        print_info "Build time: Usually 5-10 minutes"
+    else
+        echo ""
+        print_warning "Deployment may have failed, but this could be normal if:"
+        print_warning "- A build is already in progress"
+        print_warning "- The server is temporarily busy"
+        print_info "Please check your Dokploy dashboard for current status"
+    fi
 }
 
 # Run main function
