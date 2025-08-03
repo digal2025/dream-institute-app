@@ -27,7 +27,7 @@
     },
     "scripts": {
         "start": "react-scripts start",
-        "build": "CI=false DISABLE_ESLINT_PLUGIN=true GENERATE_SOURCEMAP=false NODE_OPTIONS='--max-old-space-size=4096' react-scripts build",
+        "build": "CI=false DISABLE_ESLINT_PLUGIN=true GENERATE_SOURCEMAP=false SKIP_PREFLIGHT_CHECK=true NODE_OPTIONS='--max-old-space-size=4096' react-scripts build",
         "build:fast": "CI=false DISABLE_ESLINT_PLUGIN=true GENERATE_SOURCEMAP=false SKIP_PREFLIGHT_CHECK=true NODE_OPTIONS='--max-old-space-size=4096' react-scripts build",
         "test": "react-scripts test",
         "test:coverage": "react-scripts test --coverage --watchAll=false",
