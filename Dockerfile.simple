@@ -1,7 +1,7 @@
-# Simple production Dockerfile
+# Simple and reliable production build
 FROM node:18-alpine
 
-# Install curl for health checks
+# Install essential tools
 RUN apk add --no-cache curl bash
 
 # Set working directory
@@ -12,31 +12,21 @@ ENV NODE_ENV=production
 ENV CI=false
 ENV DISABLE_ESLINT_PLUGIN=true
 ENV GENERATE_SOURCEMAP=false
-ENV NODE_OPTIONS="--max-old-space-size=4096"
 
-# Copy package files
-COPY package*.json ./
-COPY zoho-invoice-api/package*.json ./zoho-invoice-api/
-COPY zoho-invoice-api/client/package*.json ./zoho-invoice-api/client/
+# Copy all files
+COPY . .
 
 # Install dependencies
 RUN npm ci --omit=dev --no-audit --no-fund
 RUN cd zoho-invoice-api && npm ci --omit=dev --no-audit --no-fund
 RUN cd zoho-invoice-api/client && npm ci --omit=dev --no-audit --no-fund
 
-# Copy source code
-COPY . .
-
-# Build the React application
+# Build React app
 RUN cd zoho-invoice-api/client && npm run build
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nextjs -u 1001
-
-# Copy debug script and set permissions
-COPY debug-startup.sh ./
-RUN chmod +x debug-startup.sh
 
 # Change ownership
 RUN chown -R nextjs:nodejs /app
@@ -50,4 +40,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 EXPOSE 3000
 
 # Start the application
-CMD ["./debug-startup.sh"] 
+WORKDIR /app/zoho-invoice-api
+CMD ["npm", "start"] 
