@@ -1,6 +1,6 @@
 {
   "build": {
-    "command": "./build-production.sh"
+    "command": "npm run build"
   },
   "start": {
     "command": "cd zoho-invoice-api && npm start"

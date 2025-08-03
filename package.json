@@ -5,7 +5,7 @@
   "main": "zoho-invoice-api/index.js",
   "scripts": {
     "start": "cd zoho-invoice-api && npm start",
-    "build": "cd zoho-invoice-api/client && CI=false DISABLE_ESLINT_PLUGIN=true GENERATE_SOURCEMAP=false npm run build",
+    "build": "npm install --omit=dev --no-audit --no-fund && cd zoho-invoice-api && npm install --omit=dev --no-audit --no-fund && cd client && npm install --omit=dev --no-audit --no-fund && CI=false DISABLE_ESLINT_PLUGIN=true GENERATE_SOURCEMAP=false SKIP_PREFLIGHT_CHECK=true NODE_OPTIONS='--max-old-space-size=4096' npm run build",
     "dev": "cd zoho-invoice-api && npm run dev",
     "install-all": "npm install && cd zoho-invoice-api && npm install && cd client && npm install",
     "test": "cd zoho-invoice-api && npm test"
