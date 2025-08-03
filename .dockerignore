@@ -4,9 +4,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Production builds
-build/
-dist/
+# Production builds (but keep the one we're building)
+# build/
+# dist/
 
 # Environment files
 .env
@@ -92,11 +92,11 @@ public
 tmp/
 temp/
 
-# Test files
-*.test.js
-*.spec.js
-tests/
-__tests__/
+# Test files (but keep test setup)
+# *.test.js
+# *.spec.js
+# tests/
+# __tests__/
 
 # Documentation
 README.md
@@ -111,6 +111,7 @@ docker-compose*
 build.sh
 PRODUCTION_BUILD_GUIDE.md
 DOCKER_TROUBLESHOOTING.md
+manual-deploy.sh
 
-# Debug files (keep debug-startup.sh for Docker build)
-# debug-startup.sh
+# Debug files
+debug-startup.sh

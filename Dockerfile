@@ -14,19 +14,22 @@ ENV DISABLE_ESLINT_PLUGIN=true
 ENV GENERATE_SOURCEMAP=false
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 
-# Copy only package files first for better caching
+# Copy package files for all levels
 COPY package*.json ./
 COPY zoho-invoice-api/package*.json ./zoho-invoice-api/
 COPY zoho-invoice-api/client/package*.json ./zoho-invoice-api/client/
 
-# Install dependencies with optimizations
+# Install root dependencies
 RUN npm ci --omit=dev --no-audit --no-fund --prefer-offline
+
+# Install backend dependencies
 RUN cd zoho-invoice-api && npm ci --omit=dev --no-audit --no-fund --prefer-offline
+
+# Install frontend dependencies
 RUN cd zoho-invoice-api/client && npm ci --omit=dev --no-audit --no-fund --prefer-offline
 
-# Copy source code (excluding node_modules and build artifacts)
+# Copy source code
 COPY zoho-invoice-api/ ./zoho-invoice-api/
-COPY debug-startup.sh ./
 
 # Build the React application
 RUN cd zoho-invoice-api/client && npm run build

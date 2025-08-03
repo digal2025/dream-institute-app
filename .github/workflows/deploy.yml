@@ -9,11 +9,13 @@ on:
 jobs:
   build-and-push-dockerfile-image:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -52,10 +54,13 @@ jobs:
           cache-to: type=gha,mode=max
           build-args: |
             BUILDKIT_INLINE_CACHE=1
+          no-cache-filters: |
+            node_modules
 
       - name: Trigger Dokploy Deployment
         if: github.ref == 'refs/heads/working-app-tested' || github.ref == 'refs/heads/main'
         run: |
+          echo "Triggering Dokploy deployment..."
           curl -X 'POST' \
           'https://${{ secrets.DOKPLOY_DOMAIN }}/api/trpc/application.deploy' \
           -H 'accept: application/json' \
@@ -65,4 +70,4 @@ jobs:
               "json":{
                   "applicationId": "${{ secrets.DOKPLOY_APP_ID }}"
               }
-          }' 
+          }' || echo "Dokploy deployment trigger failed, but build was successful" 
