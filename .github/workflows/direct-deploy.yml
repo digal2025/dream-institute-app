@@ -1,0 +1,44 @@
+name: Direct Dokploy Deployment
+
+on:
+  push:
+    branches: ["working-app-tested", "main"]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Deploy to Dokploy
+        run: |
+          echo "🚀 Triggering direct Dokploy deployment..."
+          
+          # Make the deployment request
+          response=$(curl -s -w "%{http_code}" -X POST \
+            "https://${{ secrets.DOKPLOY_DOMAIN }}/api/trpc/application.deploy" \
+            -H "accept: application/json" \
+            -H "x-api-key: ${{ secrets.DOKPLOY_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"json\":{\"applicationId\":\"${{ secrets.DOKPLOY_APP_ID }}\"}}" \
+            --max-time 30)
+          
+          # Extract status code
+          http_code="${response: -3}"
+          response_body="${response%???}"
+          
+          echo "Response Code: $http_code"
+          echo "Response Body: $response_body"
+          
+          if [ "$http_code" = "200" ]; then
+            echo "✅ Deployment triggered successfully!"
+            echo "Your app will be built and deployed by Dokploy"
+          else
+            echo "❌ Deployment failed with status code: $http_code"
+            echo "Response: $response_body"
+            exit 1
+          fi 

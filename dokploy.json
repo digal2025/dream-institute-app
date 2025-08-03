@@ -1,6 +1,6 @@
 {
   "build": {
-    "command": "npm install --omit=dev --no-audit --no-fund && cd zoho-invoice-api && npm install --omit=dev --no-audit --no-fund && cd client && npm install --omit=dev --no-audit --no-fund && CI=false DISABLE_ESLINT_PLUGIN=true GENERATE_SOURCEMAP=false NODE_OPTIONS='--max-old-space-size=4096' npm run build"
+    "command": "echo 'Starting build...' && npm install --omit=dev --no-audit --no-fund --prefer-offline && echo 'Root dependencies installed' && cd zoho-invoice-api && npm install --omit=dev --no-audit --no-fund --prefer-offline && echo 'Backend dependencies installed' && cd client && npm install --omit=dev --no-audit --no-fund --prefer-offline && echo 'Frontend dependencies installed' && CI=false DISABLE_ESLINT_PLUGIN=true GENERATE_SOURCEMAP=false NODE_OPTIONS='--max-old-space-size=4096' npm run build && echo 'Build completed successfully'"
   },
   "start": {
     "command": "cd zoho-invoice-api && npm start"
