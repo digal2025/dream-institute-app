@@ -84,7 +84,7 @@ function formatNotificationDate(date) {
 }
 
 // Modern Edit Student Dialog
-function EditStudentDialog({ open, onClose, students, onStudentUpdated, onNotify, currentUserRole, currentUser }) {
+function EditStudentDialog({ open, onClose, students, onStudentUpdated, currentUserRole, currentUser }) {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [form, setForm] = useState({ name: '', email: '', phone: '', cf_pgdca_course: '', cf_batch_name: '', course_fees: '', status: 'in_progress' });
   const [loading, setLoading] = useState(false);
@@ -579,19 +579,8 @@ function AdminDashboard() {
     fetchNotifications();
   }, []);
 
-  // Notification handler
+  // Notification handler - Backend now handles all notifications
   const { user: currentUser, logout } = useAuth();
-  const handleNotify = async (notification) => {
-    // Save to backend
-    const res = await fetch('/api/notifications', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...notification, time: new Date(), read: false, user: currentUser?.name || currentUser?.username || '' })
-    });
-    const data = await res.json();
-    setNotifications(prev => [data.notification, ...prev]);
-    setUnreadCount(c => c + 1);
-  };
 
   // Fetch fresh notifications from backend
   const fetchNotifications = async () => {
@@ -762,7 +751,7 @@ function AdminDashboard() {
 
       if (response.ok) {
         setAdminSuccess('Admin user created successfully!');
-        handleNotify({ message: `Created new admin user: ${adminForm.name}.` });
+        // Backend handles notifications automatically
         // Reset form
         setAdminForm({ name: '', email: '', password: '', confirmPassword: '', role: 'admin' });
         // Refresh admin users list
@@ -829,7 +818,7 @@ function AdminDashboard() {
       const data = await response.json();
 
       if (response.ok) {
-        handleNotify({ message: `Deleted admin user: ${userToDelete.name}.` });
+        // Backend handles notifications automatically
         // Refresh the admin users list
         fetchAdminUsers();
       } else {
@@ -1168,7 +1157,6 @@ function AdminDashboard() {
             refetchAll(); // Refresh all data to update KPIs immediately
           }, 100);
         }}
-        onNotify={handleNotify}
       />
       {/* Add Customer Dialog */}
       <AddCustomerDialog 
@@ -1181,11 +1169,10 @@ function AdminDashboard() {
           }
         }} 
         onSuccess={() => setStudentAdded(true)} 
-        onNotify={handleNotify}
         currentUser={user}
       />
-              <AddPaymentDialog open={addPaymentDialogOpen} onClose={() => setAddPaymentDialogOpen(false)} onSuccess={refetchAll} onNotify={handleNotify} currentUser={user} />
-      <SmsReminderDialog open={smsDialogOpen} onClose={() => setSmsDialogOpen(false)} onNotify={handleNotify} />
+              <AddPaymentDialog open={addPaymentDialogOpen} onClose={() => setAddPaymentDialogOpen(false)} onSuccess={refetchAll} currentUser={user} />
+      <SmsReminderDialog open={smsDialogOpen} onClose={() => setSmsDialogOpen(false)} />
       <EditStudentDialog 
         open={editDialogOpen} 
         onClose={() => {
@@ -1203,7 +1190,6 @@ function AdminDashboard() {
           // Refresh all data immediately to update outstanding column
           refetchAll();
         }} 
-        onNotify={handleNotify}
         currentUserRole={user?.role}
         currentUser={user}
       />
