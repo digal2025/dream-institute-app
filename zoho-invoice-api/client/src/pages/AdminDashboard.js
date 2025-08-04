@@ -468,6 +468,7 @@ function AdminDashboard() {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [expandedNotifications, setExpandedNotifications] = useState(new Set());
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
 
   // Efficient loading overlay state
   const [initialLoad, setInitialLoad] = useState(true);
@@ -575,12 +576,7 @@ function AdminDashboard() {
 
   // Fetch notifications from backend on mount
   useEffect(() => {
-    fetch('/api/notifications')
-      .then(res => res.json())
-      .then(data => {
-        setNotifications(Array.isArray(data.notifications) ? data.notifications : []);
-        setUnreadCount((Array.isArray(data.notifications) ? data.notifications : []).filter(n => n && !n.read).length);
-      });
+    fetchNotifications();
   }, []);
 
   // Notification handler
@@ -597,17 +593,50 @@ function AdminDashboard() {
     setUnreadCount(c => c + 1);
   };
 
-  // Mark all as read when opening sidebar
+  // Fetch fresh notifications from backend
+  const fetchNotifications = async () => {
+    setNotificationsLoading(true);
+    
+    try {
+      const response = await fetch('/api/notifications?limit=1000');
+      const data = await response.json();
+      
+      if (data.notifications) {
+        setNotifications(data.notifications);
+        
+        // Update unread count
+        const unreadCount = data.notifications.filter(n => n && !n.read).length;
+        setUnreadCount(unreadCount);
+      }
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+      // Keep existing notifications if fetch fails
+    } finally {
+      setNotificationsLoading(false);
+    }
+  };
+
+  // Fetch fresh notifications and mark as read when opening sidebar
   const handleOpenNotifications = async () => {
-    // Mark all as read in backend
-    await Promise.all(
-      notifications.filter(n => n && !n.read).map(n =>
-        fetch(`/api/notifications/${n._id}`, { method: 'PATCH' })
-      )
-    );
-    setNotifications(prev => prev.map(n => n ? { ...n, read: true } : n));
-    setUnreadCount(0);
     setNotificationsOpen(true);
+    await fetchNotifications();
+    
+    // Mark all as read in backend
+    const unreadNotifications = notifications.filter(n => n && !n.read);
+    if (unreadNotifications.length > 0) {
+      try {
+        await Promise.all(
+          unreadNotifications.map(n =>
+            fetch(`/api/notifications/${n._id}`, { method: 'PATCH' })
+          )
+        );
+        // Update local state to mark as read
+        setNotifications(prev => prev.map(n => n ? { ...n, read: true } : n));
+        setUnreadCount(0);
+      } catch (error) {
+        console.error('Error marking notifications as read:', error);
+      }
+    }
   };
 
   // Clear notifications in backend
@@ -1337,6 +1366,17 @@ function AdminDashboard() {
         <div style={{ padding: 18, borderBottom: '1.5px solid #e0e7ff', fontWeight: 500, fontSize: 18, color: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'space-between', letterSpacing: 0.1 }}>
           <span>Notifications</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <IconButton 
+              onClick={fetchNotifications} 
+              disabled={notificationsLoading}
+              sx={{ 
+                color: '#6366f1',
+                '&:hover': { background: 'rgba(99, 102, 241, 0.1)' },
+                '&:disabled': { color: '#9ca3af' }
+              }}
+            >
+              <RefreshIcon sx={{ fontSize: 20 }} />
+            </IconButton>
             <Button onClick={handleClearNotifications} size="small" variant="text" color="error" sx={{ fontWeight: 500, fontSize: 14, px: 0, py: 0, minWidth: 0, textTransform: 'none' }}>
               Clear
             </Button>
@@ -1344,7 +1384,19 @@ function AdminDashboard() {
           </div>
         </div>
         <div style={{ padding: 0, overflowY: 'auto', height: '100%' }}>
-          {notifications.length === 0 ? (
+          {notificationsLoading ? (
+            <div style={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              height: '200px',
+              gap: 16
+            }}>
+              <CircularProgress size={40} sx={{ color: '#6366f1' }} />
+              <div style={{ color: '#6366f1', fontSize: 16, fontWeight: 500 }}>Loading notifications...</div>
+            </div>
+          ) : notifications.length === 0 ? (
             <div style={{ color: '#888', fontSize: 16, textAlign: 'center', marginTop: 32 }}>No notifications yet.</div>
           ) : (
             <div style={{ padding: 12 }}>
