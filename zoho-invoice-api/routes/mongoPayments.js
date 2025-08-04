@@ -6,6 +6,22 @@ const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const jwt = require('jsonwebtoken');
 
+// Helper to send notification
+const sendNotification = async (message, user) => {
+  try {
+    const Notification = require('../backend/models/Notification');
+    await Notification.create({
+      message,
+      time: new Date(),
+      read: false,
+      type: 'payment',
+      user: user || 'System'
+    });
+  } catch (err) {
+    console.error('Error sending notification:', err);
+  }
+};
+
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 // Middleware to check if user has super_admin role
@@ -82,11 +98,13 @@ router.post('/', async (req, res) => {
     const payment = await Payment.create(req.body);
     
     // Update invoice balance if payment is for a specific customer
+    let invoiceUpdateDetails = null;
     if (payment.customer_id && payment.amount) {
       const invoices = await Invoice.find({ customer_id: payment.customer_id });
       
       for (const invoice of invoices) {
         // Update invoice balance
+        const oldBalance = invoice.balance;
         const newBalance = Math.max(0, invoice.balance - payment.amount);
         const paymentMade = invoice.total - newBalance;
         
@@ -103,8 +121,27 @@ router.post('/', async (req, res) => {
             }
           }
         });
+        
+        invoiceUpdateDetails = {
+          oldBalance,
+          newBalance,
+          totalPaid: paymentMade,
+          invoiceTotal: invoice.total
+        };
       }
     }
+    
+    // Send detailed notification
+    let notificationMessage = `Payment added: ₹${payment.amount.toLocaleString()} for ${payment.customer_name}`;
+    if (payment.payment_mode) {
+      notificationMessage += ` (${payment.payment_mode})`;
+    }
+    if (invoiceUpdateDetails) {
+      notificationMessage += ` - Outstanding: ₹${invoiceUpdateDetails.oldBalance.toLocaleString()} → ₹${invoiceUpdateDetails.newBalance.toLocaleString()}`;
+      notificationMessage += ` (Total Paid: ₹${invoiceUpdateDetails.totalPaid.toLocaleString()})`;
+    }
+    
+    await sendNotification(notificationMessage, req.body.user || (req.user && req.user.name));
     
     res.json({ payment });
   } catch (err) {
@@ -121,6 +158,16 @@ router.delete('/:id', requireSuperAdmin, async (req, res) => {
     if (!deleted) {
       return res.status(404).json({ error: 'Payment not found' });
     }
+    
+    // Send detailed notification
+    let notificationMessage = `Payment deleted: ₹${deleted.amount.toLocaleString()} for ${deleted.customer_name}`;
+    if (deleted.payment_mode) {
+      notificationMessage += ` (${deleted.payment_mode})`;
+    }
+    notificationMessage += ` - Deleted by Super Admin`;
+    
+    await sendNotification(notificationMessage, req.user.name);
+    
     res.json({ success: true, message: 'Payment deleted' });
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete payment', details: err.message });
@@ -132,15 +179,47 @@ router.patch('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { date, amount, payment_mode, reference_number } = req.body;
+    
+    // Get the original payment for comparison
+    const originalPayment = await Payment.findById(id);
+    if (!originalPayment) {
+      return res.status(404).json({ error: 'Payment not found' });
+    }
+    
     const update = {};
     if (date !== undefined) update.date = date;
     if (amount !== undefined) update.amount = amount;
     if (payment_mode !== undefined) update.payment_mode = payment_mode;
     if (reference_number !== undefined) update.reference_number = reference_number;
+    
     const updated = await Payment.findByIdAndUpdate(id, update, { new: true });
     if (!updated) {
       return res.status(404).json({ error: 'Payment not found' });
     }
+    
+    // Send detailed notification for significant changes
+    let notificationMessage = `Payment updated for ${updated.customer_name}`;
+    let hasChanges = false;
+    
+    if (amount !== undefined && amount !== originalPayment.amount) {
+      notificationMessage += ` - Amount: ₹${originalPayment.amount.toLocaleString()} → ₹${amount.toLocaleString()}`;
+      hasChanges = true;
+    }
+    
+    if (payment_mode !== undefined && payment_mode !== originalPayment.payment_mode) {
+      notificationMessage += ` - Mode: ${originalPayment.payment_mode} → ${payment_mode}`;
+      hasChanges = true;
+    }
+    
+    if (date !== undefined && new Date(date).getTime() !== new Date(originalPayment.date).getTime()) {
+      notificationMessage += ` - Date updated`;
+      hasChanges = true;
+    }
+    
+    if (hasChanges) {
+      await sendNotification(notificationMessage, req.body.user || 'System');
+    }
+    
     res.json({ success: true, payment: updated });
   } catch (err) {
     res.status(500).json({ error: 'Failed to update payment', details: err.message });

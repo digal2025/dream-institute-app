@@ -145,8 +145,15 @@ router.post('/', async (req, res) => {
       invoice = await Invoice.create(invoiceData);
     }
 
-    // Send notification
-    await sendNotification(`Added student: ${created.customer_name}`, req.body.user || (req.user && req.user.name));
+    // Send detailed notification
+    let notificationMessage = `Added student: ${created.customer_name}`;
+    if (req.body.course_fees && req.body.course_fees > 0) {
+      notificationMessage += ` with course fees ₹${req.body.course_fees.toLocaleString()}`;
+      if (invoice) {
+        notificationMessage += ` - Invoice created (Total: ₹${invoice.total.toLocaleString()}, Balance: ₹${invoice.balance.toLocaleString()})`;
+      }
+    }
+    await sendNotification(notificationMessage, req.body.user || (req.user && req.user.name));
     
     res.json({ 
       customer: created, 
@@ -284,8 +291,33 @@ router.patch('/:id', async (req, res) => {
       }
     }
 
-    // Send notification
-    await sendNotification(`Updated student: ${updated.customer_name}`, req.body.user || (req.user && req.user.name));
+    // Send detailed notification
+    let notificationMessage = `Updated student: ${updated.customer_name}`;
+    
+    // Track course fee changes
+    if (req.body.course_fees !== undefined && req.body.course_fees !== currentCustomer.course_fees) {
+      const oldFees = currentCustomer.course_fees || 0;
+      const newFees = req.body.course_fees || 0;
+      
+      if (oldFees === 0 && newFees > 0) {
+        notificationMessage += ` - Course fees added: ₹${newFees.toLocaleString()}`;
+      } else if (oldFees > 0 && newFees > 0 && oldFees !== newFees) {
+        notificationMessage += ` - Course fees updated: ₹${oldFees.toLocaleString()} → ₹${newFees.toLocaleString()}`;
+      }
+      
+      // Add invoice details
+      if (invoice) {
+        if (existingInvoice) {
+          notificationMessage += ` - Invoice updated (Total: ₹${invoice.total.toLocaleString()}, Balance: ₹${invoice.balance.toLocaleString()}, Paid: ₹${invoice.payment_made.toLocaleString()})`;
+        } else {
+          notificationMessage += ` - Invoice created (Total: ₹${invoice.total.toLocaleString()}, Balance: ₹${invoice.balance.toLocaleString()})`;
+        }
+      }
+    } else {
+      notificationMessage += ` - General details updated`;
+    }
+    
+    await sendNotification(notificationMessage, req.body.user || (req.user && req.user.name));
     
     res.json({ 
       customer: updated, 
