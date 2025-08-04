@@ -53,8 +53,18 @@ export function getFilteredStudents({ students, paymentsByMonth, months, search,
     // Assume invoice has customer_id or contact_id and amount (or total)
     const cid = inv.customer_id || inv.contact_id;
     if (!cid) return;
-    if (!invoiceMap[cid]) invoiceMap[cid] = 0;
-    invoiceMap[cid] += Number(inv.total || inv.amount || 0);
+    
+    // Only keep the latest invoice for each customer (by last_modified_time)
+    if (!invoiceMap[cid] || (inv.last_modified_time && invoiceMap[cid].last_modified_time && 
+        new Date(inv.last_modified_time) > new Date(invoiceMap[cid].last_modified_time))) {
+      invoiceMap[cid] = inv;
+    }
+  });
+  
+  // Convert to amount map for calculation
+  const invoiceAmountMap = {};
+  Object.keys(invoiceMap).forEach(cid => {
+    invoiceAmountMap[cid] = Number(invoiceMap[cid].total || invoiceMap[cid].amount || 0);
   });
   const monthsWithCurrent = months ? [...months] : [];
   const filteredStudents = students.filter(s =>
@@ -67,8 +77,20 @@ export function getFilteredStudents({ students, paymentsByMonth, months, search,
       monthPayments[`paid_${m}`] = paymentRow[m] || 0;
       totalPaid += paymentRow[m] || 0;
     });
-    const invoiceAmount = invoiceMap[s.contact_id] || 0;
+    const invoiceAmount = invoiceAmountMap[s.contact_id] || 0;
     const outstanding = invoiceAmount - totalPaid;
+    
+    // Debug log for outstanding calculation (only for students with course fees)
+    if (s.course_fees && s.course_fees > 0) {
+      console.log(`Outstanding calculation for ${s.customer_name}:`, {
+        contact_id: s.contact_id,
+        course_fees: s.course_fees,
+        invoiceAmount,
+        totalPaid,
+        outstanding: outstanding > 0 ? outstanding : 0
+      });
+    }
+    
     return {
       ...s,
       ...monthPayments,

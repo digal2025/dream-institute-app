@@ -120,18 +120,33 @@ export default function useDashboardHandlers() {
       const invRes = await fetch(`/api/mongo/invoices?customer_id=${row.id}&limit=100`);
       const invData = await invRes.json();
       const invoices = invData.invoices || invData.invoice || invData || [];
-      const totalInvoiced = Array.isArray(invoices) ? invoices.reduce((sum, inv) => sum + Number(inv.total || 0), 0) : 0;
+      
+      // Use the same logic as dashboard selectors - only get the latest invoice
+      let latestInvoice = null;
+      if (Array.isArray(invoices) && invoices.length > 0) {
+        // Sort by last_modified_time to get the latest invoice
+        invoices.sort((a, b) => {
+          const dateA = new Date(a.last_modified_time || a.created_time || 0);
+          const dateB = new Date(b.last_modified_time || b.created_time || 0);
+          return dateB - dateA; // Descending order
+        });
+        latestInvoice = invoices[0];
+      }
+      
+      const totalInvoiced = latestInvoice ? Number(latestInvoice.total || 0) : 0;
+      
       // Fetch all payments for this customer from MongoDB
       const payRes = await fetch(`/api/mongo/payments?customer_id=${row.id}&limit=1000`);
       const payData = await payRes.json();
       const payments = payData.customerpayments || payData.payments || payData || [];
       const totalPaid = Array.isArray(payments) ? payments.reduce((sum, p) => sum + Number(p.amount || 0), 0) : 0;
+      
       setPopoverContent({
         customer: row.customer_name,
         outstanding: row.outstanding_receivable_amount,
         paid: totalPaid,
         invoiced: totalInvoiced,
-        details: { invoices, payments },
+        details: { invoices: latestInvoice ? [latestInvoice] : [], payments },
         type: 'outstanding',
       });
     } catch (err) {

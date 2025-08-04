@@ -81,9 +81,9 @@ function formatNotificationDate(date) {
 }
 
 // Modern Edit Student Dialog
-function EditStudentDialog({ open, onClose, students, onStudentUpdated, onNotify }) {
+function EditStudentDialog({ open, onClose, students, onStudentUpdated, onNotify, currentUserRole }) {
   const [selectedStudent, setSelectedStudent] = useState(null);
-  const [form, setForm] = useState({ name: '', email: '', phone: '', cf_pgdca_course: '', cf_batch_name: '', status: 'in_progress' });
+  const [form, setForm] = useState({ name: '', email: '', phone: '', cf_pgdca_course: '', cf_batch_name: '', course_fees: '', status: 'in_progress' });
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(null);
   const [error, setError] = useState(null);
@@ -114,6 +114,7 @@ function EditStudentDialog({ open, onClose, students, onStudentUpdated, onNotify
               phone: data.customer.phone || '',
               cf_pgdca_course: data.customer.cf_pgdca_course || '',
               cf_batch_name: data.customer.cf_batch_name || '',
+              course_fees: data.customer.course_fees || '',
               status: data.customer.status || 'in_progress'
             });
           }
@@ -135,23 +136,39 @@ function EditStudentDialog({ open, onClose, students, onStudentUpdated, onNotify
     setError(null);
     setSuccess(null);
     try {
+      const requestData = {
+        customer_name: form.name,
+        email: form.email,
+        phone: form.phone,
+        cf_pgdca_course: form.cf_pgdca_course,
+        cf_batch_name: form.cf_batch_name,
+        course_fees: form.course_fees ? parseFloat(form.course_fees) : 0,
+        status: form.status
+      };
+      
+      console.log('Edit Student Request Data:', requestData);
+      
       const response = await fetch(`/api/mongo/customers/${selectedStudent.contact_id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customer_name: form.name,
-          email: form.email,
-          phone: form.phone,
-          cf_pgdca_course: form.cf_pgdca_course,
-          cf_batch_name: form.cf_batch_name,
-          status: form.status
-        })
+        body: JSON.stringify(requestData)
       });
       const data = await response.json();
+      console.log('Edit Student Response Data:', data);
+      
       if (response.ok) {
-        setSuccess('Student updated successfully!');
+        // Check if invoice was created or updated
+        const hasInvoice = data.invoice;
+        const isInvoiceUpdate = data.message && data.message.includes('invoice updated');
+        const successMessage = hasInvoice 
+          ? isInvoiceUpdate 
+            ? `Updated ${form.name} and updated invoice to ₹${form.course_fees}!`
+            : `Updated ${form.name} and created invoice for ₹${form.course_fees}!`
+          : `Updated details for ${form.name}.`;
+        
+        setSuccess(hasInvoice ? (isInvoiceUpdate ? 'Student updated and invoice updated successfully!' : 'Student updated and invoice created successfully!') : 'Student updated successfully!');
         onStudentUpdated && onStudentUpdated();
-        onNotify && onNotify({ message: `Updated details for ${form.name}.` });
+        onNotify && onNotify({ message: successMessage });
       } else {
         setError(data.error || 'Failed to update student');
       }
@@ -164,7 +181,7 @@ function EditStudentDialog({ open, onClose, students, onStudentUpdated, onNotify
 
   const handleClose = () => {
     setSelectedStudent(null);
-    setForm({ name: '', email: '', phone: '', cf_pgdca_course: '', cf_batch_name: '', status: 'in_progress' });
+    setForm({ name: '', email: '', phone: '', cf_pgdca_course: '', cf_batch_name: '', course_fees: '', status: 'in_progress' });
     setError(null);
     setSuccess(null);
     setShowDeleteConfirm(false);
@@ -272,6 +289,22 @@ function EditStudentDialog({ open, onClose, students, onStudentUpdated, onNotify
           <TextField label="Course" name="cf_pgdca_course" value={form.cf_pgdca_course} onChange={handleChange} fullWidth margin="normal" sx={{ ...textFieldSx, flex: 1 }} />
           <TextField label="Batch" name="cf_batch_name" value={form.cf_batch_name} onChange={handleChange} fullWidth margin="normal" sx={{ ...textFieldSx, flex: 1 }} />
         </Box>
+        <TextField
+          label="Course Fees (₹)"
+          name="course_fees"
+          type="number"
+          value={form.course_fees}
+          onChange={handleChange}
+          inputProps={{ 
+            min: 0, 
+            step: 0.01,
+            onKeyPress: e => { if (!/[0-9.]/.test(e.key)) e.preventDefault(); }
+          }}
+          fullWidth
+          margin="normal"
+          sx={textFieldSx}
+          helperText="Enter course fees to generate an invoice for this student"
+        />
         <TextField 
           label="Student Status" 
           name="status" 
@@ -292,7 +325,7 @@ function EditStudentDialog({ open, onClose, students, onStudentUpdated, onNotify
       </DialogContent>
       <DialogActions sx={{ px: 5, pb: 3, justifyContent: 'space-between' }}>
         <Box>
-          {selectedStudent && (
+          {selectedStudent && currentUserRole === 'super_admin' && (
             <Button 
               onClick={() => setShowDeleteConfirm(true)} 
               variant="outlined" 
@@ -1104,12 +1137,13 @@ function AdminDashboard() {
         students={allStudents} 
         onStudentUpdated={() => {
           setStudentUpdated(true);
-          // Add small delay to ensure backend cascade delete completes
-          setTimeout(() => {
-            refetchAll(); // Refresh all data to update KPIs immediately
-          }, 100);
+          // Close any open popovers to ensure fresh data
+          handlePopoverClose();
+          // Refresh all data immediately to update outstanding column
+          refetchAll();
         }} 
         onNotify={handleNotify}
+        currentUserRole={user?.role}
       />
 
       {/* Profile Dialog */}

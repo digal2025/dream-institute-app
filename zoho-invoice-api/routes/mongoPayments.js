@@ -1,5 +1,6 @@
 const express = require('express');
 const Payment = require('../backend/models/Payment');
+const Invoice = require('../backend/models/Invoice');
 const User = require('../backend/models/User');
 const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
@@ -77,7 +78,34 @@ router.post('/', async (req, res) => {
     if (!req.body.payment_id) {
       req.body.payment_id = uuidv4();
     }
+    
     const payment = await Payment.create(req.body);
+    
+    // Update invoice balance if payment is for a specific customer
+    if (payment.customer_id && payment.amount) {
+      const invoices = await Invoice.find({ customer_id: payment.customer_id });
+      
+      for (const invoice of invoices) {
+        // Update invoice balance
+        const newBalance = Math.max(0, invoice.balance - payment.amount);
+        const paymentMade = invoice.total - newBalance;
+        
+        await Invoice.findByIdAndUpdate(invoice._id, {
+          balance: newBalance,
+          payment_made: paymentMade,
+          last_modified_time: new Date(),
+          $push: {
+            payments: {
+              payment_id: payment.payment_id,
+              amount: payment.amount,
+              date: payment.date,
+              payment_mode: payment.payment_mode
+            }
+          }
+        });
+      }
+    }
+    
     res.json({ payment });
   } catch (err) {
     console.error('Error adding payment:', err.stack || err);
