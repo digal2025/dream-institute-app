@@ -67,13 +67,20 @@ router.post('/login', async (req, res) => {
     let student = await Customer.findOne({ email: emailOrPhone.toLowerCase() });
 
     if (!student) {
-      return res.status(400).json({ msg: 'Invalid credentials.' });
+      return res.status(404).json({ 
+        msg: 'Student not found in our database.',
+        errorType: 'student_not_found',
+        suggestion: 'Please contact the Institute admin to add your email to the system.'
+      });
     }
 
     // Check password
     const isMatch = await bcrypt.compare(password, student.password);
     if (!isMatch) {
-      return res.status(400).json({ msg: 'Invalid credentials.' });
+      return res.status(400).json({ 
+        msg: 'Invalid password.',
+        errorType: 'invalid_password'
+      });
     }
 
     // Check if OTP verification is required

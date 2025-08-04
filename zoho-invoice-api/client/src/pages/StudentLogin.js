@@ -49,6 +49,10 @@ function StudentLogin() {
   const [resetLoading, setResetLoading] = useState(false);
   const [resetMsg, setResetMsg] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  
+  // Student not found dialog
+  const [showStudentNotFoundDialog, setShowStudentNotFoundDialog] = useState(false);
+  const [studentNotFoundMessage, setStudentNotFoundMessage] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -74,6 +78,15 @@ function StudentLogin() {
           setError('Please verify your OTP to complete login.');
           return;
         }
+        
+        // Handle student not found error
+        if (data.errorType === 'student_not_found') {
+          setStudentNotFoundMessage(data.suggestion || 'Please contact the Institute admin to add your email to the system.');
+          setShowStudentNotFoundDialog(true);
+          return;
+        }
+        
+        // Handle other errors
         throw new Error(data.msg || 'Login failed');
       }
 
@@ -531,6 +544,61 @@ function StudentLogin() {
                 <Button onClick={() => setShowResetDialog(false)} sx={{ fontWeight: 600, borderRadius: 2.5, px: 3, py: 1, textTransform: 'none' }}>Cancel</Button>
                 <Button type="submit" variant="contained" disabled={resetLoading || !resetEmail} sx={{ fontWeight: 700, borderRadius: 2.5, px: 3, py: 1.2, textTransform: 'none', background: 'linear-gradient(90deg, #6366f1 0%, #818CF8 100%)', color: 'white', boxShadow: '0 4px 15px rgba(102, 126, 234, 0.10)', '&:hover': { background: 'linear-gradient(90deg, #4f46e5 0%, #6366f1 100%)', boxShadow: '0 6px 20px rgba(102, 126, 234, 0.18)' }, '&:disabled': { background: '#e0e7ff', color: '#94a3b8', boxShadow: 'none' } }}>
                   {resetLoading ? <CircularProgress size={20} /> : 'Send Reset Link'}
+                </Button>
+              </DialogActions>
+            </Box>
+          </DialogContent>
+        </Paper>
+      </Dialog>
+      
+      {/* Student Not Found Dialog */}
+      <Dialog open={showStudentNotFoundDialog} onClose={() => setShowStudentNotFoundDialog(false)} maxWidth="sm" fullWidth>
+        <Paper elevation={6} sx={{ borderRadius: 2.5, p: 0, background: 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)', boxShadow: '0 8px 32px 0 rgba(239,68,68,0.10)' }}>
+          <DialogTitle sx={{ fontWeight: 700, fontSize: 22, color: '#dc2626', pb: 0, pt: 3, textAlign: 'center', background: 'transparent' }}>
+            Student Not Found
+          </DialogTitle>
+          <DialogContent sx={{ pt: 2, pb: 1, px: 4 }}>
+            <Box sx={{ mt: 1 }}>
+              <Typography variant="body1" sx={{ mb: 2, color: '#374151', fontSize: 16, lineHeight: 1.6 }}>
+                The email address you entered is not registered in our student database.
+              </Typography>
+              <Typography variant="body1" sx={{ mb: 3, color: '#6b7280', fontSize: 15, lineHeight: 1.5 }}>
+                {studentNotFoundMessage}
+              </Typography>
+              <Box sx={{ p: 2, bgcolor: '#fef3c7', borderRadius: 2, border: '1px solid #f59e0b' }}>
+                <Typography variant="body2" sx={{ color: '#92400e', fontSize: 14, fontWeight: 500 }}>
+                  📞 Contact Information:
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#92400e', fontSize: 14, mt: 1 }}>
+                  • Email: admin@dreaminstitute.co.in
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#92400e', fontSize: 14 }}>
+                  • Phone: +91-XXXXXXXXXX
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#92400e', fontSize: 14 }}>
+                  • Address: Dream Institute, [Your Address]
+                </Typography>
+              </Box>
+              <DialogActions sx={{ px: 0, pb: 2, pt: 3 }}>
+                <Button 
+                  onClick={() => setShowStudentNotFoundDialog(false)} 
+                  variant="contained"
+                  sx={{ 
+                    fontWeight: 600, 
+                    borderRadius: 2.5, 
+                    px: 3, 
+                    py: 1.2, 
+                    textTransform: 'none',
+                    background: 'linear-gradient(90deg, #dc2626 0%, #ef4444 100%)',
+                    color: 'white',
+                    boxShadow: '0 4px 15px rgba(220, 38, 38, 0.10)',
+                    '&:hover': { 
+                      background: 'linear-gradient(90deg, #b91c1c 0%, #dc2626 100%)',
+                      boxShadow: '0 6px 20px rgba(220, 38, 38, 0.18)' 
+                    }
+                  }}
+                >
+                  Close
                 </Button>
               </DialogActions>
             </Box>
