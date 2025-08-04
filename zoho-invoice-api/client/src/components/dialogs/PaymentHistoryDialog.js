@@ -85,7 +85,10 @@ export default function PaymentHistoryDialog({ open, onClose, loading, error, pa
       const res = await fetch(`/api/mongo/payments/${paymentId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editValues),
+        body: JSON.stringify({
+          ...editValues,
+          user: currentUser?.name || currentUser?.email || 'Unknown User'
+        }),
       });
       await res.json();
       setEditingId(null);

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Box, CircularProgress, MenuItem, Alert } from '@mui/material';
 import debounce from '../../utils/debounce';
 
-export default function AddCustomerDialog({ open, onClose, onSuccess, onNotify }) {
+export default function AddCustomerDialog({ open, onClose, onSuccess, onNotify, currentUser }) {
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -113,7 +113,8 @@ export default function AddCustomerDialog({ open, onClose, onSuccess, onNotify }
         phone: form.phone.trim(),
         cf_pgdca_course: form.cf_pgdca_course,
         cf_batch_name: form.cf_batch_name,
-        course_fees: parseFloat(form.course_fees)
+        course_fees: parseFloat(form.course_fees),
+        user: currentUser?.name || currentUser?.email || 'Unknown User'
       };
       
       const response = await fetch('/api/mongo/customers', {

@@ -257,10 +257,14 @@ router.patch('/:id', async (req, res) => {
         hour12: true
       });
       
-      const userName = req.body.user || 'System';
+      // Get user name from request - try multiple sources
+      const userName = req.body.user || req.user?.name || req.headers['x-user-name'] || 'System';
+      
+      // Get student name from original payment (more reliable)
+      const studentName = originalPayment.customer_name || updated.customer_name || 'Unknown Student';
       
       let notificationMessage = `🔄 Payment Updated | ${currentTime}\n`;
-      notificationMessage += `👤 Student: ${updated.customer_name}\n`;
+      notificationMessage += `👤 Student: ${studentName}\n`;
       notificationMessage += `📝 Changes Made:\n`;
       
       changes.forEach((change, index) => {

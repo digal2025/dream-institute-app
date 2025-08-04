@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Box, CircularProgress, MenuItem, Autocomplete, Select, FormControl, InputLabel } from '@mui/material';
 
-export default function AddPaymentDialog({ open, onClose, onSuccess, onNotify }) {
+export default function AddPaymentDialog({ open, onClose, onSuccess, onNotify, currentUser }) {
   const [form, setForm] = useState({
     customer_id: '',
     date: '',
@@ -40,7 +40,10 @@ export default function AddPaymentDialog({ open, onClose, onSuccess, onNotify })
       const res = await fetch('/api/mongo/payments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form)
+        body: JSON.stringify({
+          ...form,
+          user: currentUser?.name || currentUser?.email || 'Unknown User'
+        })
       });
       const data = await res.json();
       if (!res.ok || !data.payment) throw new Error(data.error || 'Failed to add payment');

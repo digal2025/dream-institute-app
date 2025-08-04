@@ -84,7 +84,7 @@ function formatNotificationDate(date) {
 }
 
 // Modern Edit Student Dialog
-function EditStudentDialog({ open, onClose, students, onStudentUpdated, onNotify, currentUserRole }) {
+function EditStudentDialog({ open, onClose, students, onStudentUpdated, onNotify, currentUserRole, currentUser }) {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [form, setForm] = useState({ name: '', email: '', phone: '', cf_pgdca_course: '', cf_batch_name: '', course_fees: '', status: 'in_progress' });
   const [loading, setLoading] = useState(false);
@@ -146,7 +146,8 @@ function EditStudentDialog({ open, onClose, students, onStudentUpdated, onNotify
         cf_pgdca_course: form.cf_pgdca_course,
         cf_batch_name: form.cf_batch_name,
         course_fees: form.course_fees ? parseFloat(form.course_fees) : 0,
-        status: form.status
+        status: form.status,
+        user: currentUser?.name || currentUser?.email || 'Unknown User'
       };
       
       console.log('Edit Student Request Data:', requestData);
@@ -1151,9 +1152,10 @@ function AdminDashboard() {
           }
         }} 
         onSuccess={() => setStudentAdded(true)} 
-        onNotify={handleNotify} 
+        onNotify={handleNotify}
+        currentUser={user}
       />
-      <AddPaymentDialog open={addPaymentDialogOpen} onClose={() => setAddPaymentDialogOpen(false)} onSuccess={refetchAll} onNotify={handleNotify} />
+              <AddPaymentDialog open={addPaymentDialogOpen} onClose={() => setAddPaymentDialogOpen(false)} onSuccess={refetchAll} onNotify={handleNotify} currentUser={user} />
       <SmsReminderDialog open={smsDialogOpen} onClose={() => setSmsDialogOpen(false)} onNotify={handleNotify} />
       <EditStudentDialog 
         open={editDialogOpen} 
@@ -1174,6 +1176,7 @@ function AdminDashboard() {
         }} 
         onNotify={handleNotify}
         currentUserRole={user?.role}
+        currentUser={user}
       />
 
       {/* Profile Dialog */}
