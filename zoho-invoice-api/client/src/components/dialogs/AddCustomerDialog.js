@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Box, CircularProgress, MenuItem, Alert } from '@mui/material';
 import debounce from '../../utils/debounce';
 
-export default function AddCustomerDialog({ open, onClose, onSuccess, onNotify, currentUser }) {
+export default function AddCustomerDialog({ open, onClose, onSuccess, currentUser }) {
   const [form, setForm] = useState({
     name: '',
     email: '',

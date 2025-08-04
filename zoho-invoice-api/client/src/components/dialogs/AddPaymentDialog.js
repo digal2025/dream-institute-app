@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Box, CircularProgress, MenuItem, Autocomplete, Select, FormControl, InputLabel } from '@mui/material';
 
-export default function AddPaymentDialog({ open, onClose, onSuccess, onNotify, currentUser }) {
+export default function AddPaymentDialog({ open, onClose, onSuccess, currentUser }) {
   const [form, setForm] = useState({
     customer_id: '',
     date: '',

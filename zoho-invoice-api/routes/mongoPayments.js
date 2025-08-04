@@ -97,6 +97,19 @@ router.post('/', async (req, res) => {
     
     const payment = await Payment.create(req.body);
     
+    // Fetch customer name if not provided
+    let customerName = payment.customer_name;
+    if (!customerName && payment.customer_id) {
+      const Customer = require('../backend/models/Customer');
+      const customer = await Customer.findOne({ contact_id: payment.customer_id });
+      if (customer) {
+        customerName = customer.customer_name;
+        // Update the payment with customer name
+        await Payment.findByIdAndUpdate(payment._id, { customer_name: customerName });
+        payment.customer_name = customerName;
+      }
+    }
+    
     // Update invoice balance if payment is for a specific customer
     let invoiceUpdateDetails = null;
     if (payment.customer_id && payment.amount) {
@@ -184,8 +197,19 @@ router.delete('/:id', requireSuperAdmin, async (req, res) => {
       hour12: true
     });
     
+    // Get customer name if not available
+    let customerName = deleted.customer_name;
+    if (!customerName && deleted.customer_id) {
+      const Customer = require('../backend/models/Customer');
+      const customer = await Customer.findOne({ contact_id: deleted.customer_id });
+      if (customer) {
+        customerName = customer.customer_name;
+      }
+    }
+    customerName = customerName || 'Unknown Student';
+    
     let notificationMessage = `🗑️ Payment Deleted | ${currentTime}\n`;
-    notificationMessage += `👤 Student: ${deleted.customer_name}\n`;
+    notificationMessage += `👤 Student: ${customerName}\n`;
     notificationMessage += `💳 Amount: ₹${deleted.amount.toLocaleString()}\n`;
     notificationMessage += `🏦 Payment Mode: ${deleted.payment_mode || 'Not specified'}\n`;
     if (deleted.reference_number) {
@@ -260,8 +284,16 @@ router.patch('/:id', async (req, res) => {
       // Get user name from request - try multiple sources
       const userName = req.body.user || req.user?.name || req.headers['x-user-name'] || 'System';
       
-      // Get student name from original payment (more reliable)
-      const studentName = originalPayment.customer_name || updated.customer_name || 'Unknown Student';
+          // Get student name from original payment (more reliable)
+    let studentName = originalPayment.customer_name || updated.customer_name;
+    if (!studentName && originalPayment.customer_id) {
+      const Customer = require('../backend/models/Customer');
+      const customer = await Customer.findOne({ contact_id: originalPayment.customer_id });
+      if (customer) {
+        studentName = customer.customer_name;
+      }
+    }
+    studentName = studentName || 'Unknown Student';
       
       let notificationMessage = `🔄 Payment Updated | ${currentTime}\n`;
       notificationMessage += `👤 Student: ${studentName}\n`;

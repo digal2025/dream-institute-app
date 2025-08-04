@@ -27,7 +27,7 @@ import StudentFinancialReport from './StudentFinancialReport';
  * - student: object|null
  * - formatDateDMY: function
  */
-export default function PaymentHistoryDialog({ open, onClose, loading, error, payments, student, currentUser, formatDateDMY, onPaymentDeleted, onPaymentUpdated, onNotify }) {
+export default function PaymentHistoryDialog({ open, onClose, loading, error, payments, student, currentUser, formatDateDMY, onPaymentDeleted, onPaymentUpdated }) {
   const [deletingId, setDeletingId] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [editValues, setEditValues] = useState({});

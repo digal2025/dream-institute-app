@@ -16,7 +16,7 @@ import {
 import { DataGrid } from '@mui/x-data-grid';
 import { Send as SendIcon, Close as CloseIcon } from '@mui/icons-material';
 
-export default function SmsReminderDialog({ open, onClose, onNotify }) {
+export default function SmsReminderDialog({ open, onClose }) {
   const [unpaidStudents, setUnpaidStudents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
@@ -77,7 +77,7 @@ export default function SmsReminderDialog({ open, onClose, onNotify }) {
       });
       const data = await response.json();
       if (data.success) {
-        onNotify && onNotify({ message: `Fee reminder email sent to ${student.email}` });
+        // Backend handles notifications automatically
         setSuccess(`Fee reminder email sent to ${student.email}`);
       } else {
         setError(`Failed to send reminder: ${data.error}`);
@@ -105,7 +105,7 @@ export default function SmsReminderDialog({ open, onClose, onNotify }) {
       });
       const data = await response.json();
       if (data.success) {
-        onNotify && onNotify({ message: `Sent bulk WhatsApp reminders. ${data.successful} successful, ${data.failed} failed.` });
+        // Backend handles notifications automatically
         setSuccess(data.message);
       } else {
         setError(data.error || 'Failed to send bulk reminders');
