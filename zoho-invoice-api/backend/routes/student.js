@@ -242,7 +242,7 @@ router.post('/reset-password-request', async (req, res) => {
 
     // Send reset email
     try {
-      const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3001'}/student/reset-password?token=${token}`;
+      const resetUrl = `${process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://fees.dreaminstitute.co.in' : 'http://localhost:3001')}/student/reset-password?token=${token}`;
       await sendPasswordResetEmail(email, resetUrl);
       res.json({ msg: 'If your email is registered, you will receive a password reset link.' });
     } catch (emailError) {
