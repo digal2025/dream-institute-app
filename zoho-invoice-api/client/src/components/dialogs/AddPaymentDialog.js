@@ -50,8 +50,7 @@ export default function AddPaymentDialog({ open, onClose, onSuccess, onNotify, c
       setLoading(false);
       setSuccess(true);
       onSuccess && onSuccess();
-      const studentName = customers.find(c => c.contact_id === form.customer_id)?.customer_name || 'a student';
-      onNotify && onNotify({ message: `Payment of ₹${form.amount} added for ${studentName}.`, time: new Date().toLocaleString() });
+      // Backend already sends detailed notification, no need for frontend notification
       // Don't close dialog immediately
     } catch (err) {
       setError(err.message);

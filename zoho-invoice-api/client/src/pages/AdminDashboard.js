@@ -172,7 +172,7 @@ function EditStudentDialog({ open, onClose, students, onStudentUpdated, onNotify
         
         setSuccess(hasInvoice ? (isInvoiceUpdate ? 'Student updated and invoice updated successfully!' : 'Student updated and invoice created successfully!') : 'Student updated successfully!');
         onStudentUpdated && onStudentUpdated();
-        onNotify && onNotify({ message: successMessage });
+        // Backend already sends detailed notification, no need for frontend notification
       } else {
         setError(data.error || 'Failed to update student');
       }
@@ -205,7 +205,7 @@ function EditStudentDialog({ open, onClose, students, onStudentUpdated, onNotify
       if (response.ok) {
         setSuccess('Student deleted successfully!');
         onStudentUpdated && onStudentUpdated();
-        onNotify && onNotify({ message: `Deleted student: ${selectedStudent.customer_name}.` });
+        // Backend already sends detailed notification, no need for frontend notification
         setShowDeleteConfirm(false);
         // Close dialog after a short delay to show success message
         setTimeout(() => {

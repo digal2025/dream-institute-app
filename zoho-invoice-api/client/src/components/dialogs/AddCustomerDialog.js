@@ -146,10 +146,7 @@ export default function AddCustomerDialog({ open, onClose, onSuccess, onNotify, 
         
         setSuccess(hasInvoice ? 'Student and invoice created successfully!' : 'Student added successfully!');
         onSuccess && onSuccess();
-        onNotify && onNotify({ 
-          message: successMessage, 
-          time: new Date().toLocaleString() 
-        });
+        // Backend already sends detailed notification, no need for frontend notification
         // onClose(); // Removed automatic close
       } else {
         // API error

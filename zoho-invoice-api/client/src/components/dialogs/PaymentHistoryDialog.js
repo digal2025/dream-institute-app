@@ -57,7 +57,7 @@ export default function PaymentHistoryDialog({ open, onClose, loading, error, pa
       setDeletingId(null);
       setConfirmDeleteId(null);
       onPaymentDeleted && onPaymentDeleted();
-      onNotify && onNotify({ message: `Payment deleted for ${student?.customer_name || 'a student'}.` });
+      // Backend already sends detailed notification, no need for frontend notification
     } catch (err) {
       setDeletingId(null);
       setConfirmDeleteId(null);
@@ -96,7 +96,7 @@ export default function PaymentHistoryDialog({ open, onClose, loading, error, pa
       onPaymentUpdated && onPaymentUpdated();
       setShowUpdateDialog(true);
       setTimeout(() => setShowUpdateDialog(false), 2000);
-      onNotify && onNotify({ message: `Payment of ₹${editValues.amount} updated for ${student?.customer_name || 'a student'}.` });
+      // Backend already sends detailed notification, no need for frontend notification
     } catch (err) {
       setUpdatingId(null);
       alert('Failed to update payment.');
