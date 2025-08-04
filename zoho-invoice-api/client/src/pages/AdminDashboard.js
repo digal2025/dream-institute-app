@@ -62,6 +62,9 @@ import Grid from '@mui/material/Grid';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import Collapse from '@mui/material/Collapse';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 
 // Helper to format notification date
 function formatNotificationDate(date) {
@@ -463,6 +466,7 @@ function AdminDashboard() {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [expandedNotifications, setExpandedNotifications] = useState(new Set());
 
   // Efficient loading overlay state
   const [initialLoad, setInitialLoad] = useState(true);
@@ -610,6 +614,32 @@ function AdminDashboard() {
     await fetch('/api/notifications', { method: 'DELETE' });
     setNotifications([]);
     setUnreadCount(0);
+    setExpandedNotifications(new Set());
+  };
+
+  // Toggle notification expansion
+  const toggleNotificationExpansion = (notificationId) => {
+    setExpandedNotifications(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(notificationId)) {
+        newSet.delete(notificationId);
+      } else {
+        newSet.add(notificationId);
+      }
+      return newSet;
+    });
+  };
+
+  // Check if notification should be collapsed (more than 2 lines)
+  const shouldCollapseNotification = (message) => {
+    const lines = message.split('\n').filter(line => line.trim().length > 0);
+    return lines.length > 2;
+  };
+
+  // Get preview message (first 2 lines)
+  const getPreviewMessage = (message) => {
+    const lines = message.split('\n').filter(line => line.trim().length > 0);
+    return lines.slice(0, 2).join('\n');
   };
 
   // Edit Student Dialog state
@@ -1333,30 +1363,90 @@ function AdminDashboard() {
                         borderRadius: 3,
                         boxShadow: '0 1px 4px #e0e7ff44',
                       }}>{group}</div>
-                      {items.map((n, idx) => (
-                        <div key={n._id || idx} style={{
-                          marginBottom: 0,
-                          background: n.read ? 'transparent' : '#e0e7ff',
-                          borderRadius: 6,
-                          boxShadow: 'none',
-                          padding: '8px 10px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 14,
-                          borderLeft: 'none',
-                          borderBottom: '1.5px solid #e0e7ff',
-                          position: 'relative',
-                          minHeight: 48
-                        }}>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontWeight: 500, color: '#222', fontSize: 14, marginBottom: 2, padding: '0 0 0 2px' }}>{n.message}</div>
-                            <div style={{ color: '#6366f1', fontSize: 12, paddingLeft: 2 }}>
-                              {`Updated on ${formatNotificationDate(n.time)}`} {n.user && `by ${n.user}`}
+                      {items.map((n, idx) => {
+                        const notificationId = n._id || idx;
+                        const isExpanded = expandedNotifications.has(notificationId);
+                        const shouldCollapse = shouldCollapseNotification(n.message);
+                        const displayMessage = shouldCollapse && !isExpanded ? getPreviewMessage(n.message) : n.message;
+                        
+                        return (
+                          <div key={notificationId} style={{
+                            marginBottom: 0,
+                            background: n.read ? 'transparent' : '#e0e7ff',
+                            borderRadius: 6,
+                            boxShadow: 'none',
+                            padding: '8px 10px',
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: 14,
+                            borderLeft: 'none',
+                            borderBottom: '1.5px solid #e0e7ff',
+                            position: 'relative',
+                            minHeight: 48
+                          }}>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ 
+                                fontWeight: 500, 
+                                color: '#222', 
+                                fontSize: 14, 
+                                marginBottom: 2, 
+                                padding: '0 0 0 2px',
+                                whiteSpace: 'pre-line',
+                                lineHeight: 1.4
+                              }}>
+                                {displayMessage}
+                                {shouldCollapse && (
+                                  <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                                    <div style={{ 
+                                      marginTop: 8, 
+                                      padding: '8px 12px', 
+                                      background: 'rgba(99, 102, 241, 0.05)', 
+                                      borderRadius: 4,
+                                      border: '1px solid rgba(99, 102, 241, 0.1)',
+                                      fontSize: 13,
+                                      color: '#374151'
+                                    }}>
+                                      {n.message}
+                                    </div>
+                                  </Collapse>
+                                )}
+                              </div>
+                              <div style={{ color: '#6366f1', fontSize: 12, paddingLeft: 2 }}>
+                                {`Updated on ${formatNotificationDate(n.time)}`} {n.user && `by ${n.user}`}
+                              </div>
+                              {shouldCollapse && (
+                                <Button
+                                  size="small"
+                                  onClick={() => toggleNotificationExpansion(notificationId)}
+                                  sx={{
+                                    mt: 1,
+                                    minWidth: 'auto',
+                                    p: '2px 8px',
+                                    fontSize: '11px',
+                                    color: '#6366f1',
+                                    '&:hover': {
+                                      background: 'rgba(99, 102, 241, 0.1)'
+                                    }
+                                  }}
+                                >
+                                  {isExpanded ? (
+                                    <>
+                                      <ExpandLessIcon sx={{ fontSize: 14, mr: 0.5 }} />
+                                      Show Less
+                                    </>
+                                  ) : (
+                                    <>
+                                      <ExpandMoreIcon sx={{ fontSize: 14, mr: 0.5 }} />
+                                      Show More
+                                    </>
+                                  )}
+                                </Button>
+                              )}
                             </div>
+                            {!n.read && <span style={{ position: 'absolute', top: 12, right: 12, width: 8, height: 8, borderRadius: '50%', background: '#ef4444', boxShadow: '0 0 6px #ef4444aa' }} />}
                           </div>
-                          {!n.read && <span style={{ position: 'absolute', top: 12, right: 12, width: 8, height: 8, borderRadius: '50%', background: '#ef4444', boxShadow: '0 0 6px #ef4444aa' }} />}
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : null
                 );

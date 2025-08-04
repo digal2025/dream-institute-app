@@ -131,17 +131,32 @@ router.post('/', async (req, res) => {
       }
     }
     
-    // Send detailed notification
-    let notificationMessage = `Payment added: ₹${payment.amount.toLocaleString()} for ${payment.customer_name}`;
-    if (payment.payment_mode) {
-      notificationMessage += ` (${payment.payment_mode})`;
+    // Send detailed notification with professional formatting
+    const currentTime = new Date().toLocaleString('en-IN', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+    
+    const userName = req.body.user || (req.user && req.user.name) || 'System';
+    
+    let notificationMessage = `💰 Payment Added | ${currentTime}\n`;
+    notificationMessage += `👤 Student: ${payment.customer_name}\n`;
+    notificationMessage += `💳 Amount: ₹${payment.amount.toLocaleString()}\n`;
+    notificationMessage += `🏦 Payment Mode: ${payment.payment_mode || 'Not specified'}\n`;
+    if (payment.reference_number) {
+      notificationMessage += `📝 Reference: ${payment.reference_number}\n`;
     }
     if (invoiceUpdateDetails) {
-      notificationMessage += ` - Outstanding: ₹${invoiceUpdateDetails.oldBalance.toLocaleString()} → ₹${invoiceUpdateDetails.newBalance.toLocaleString()}`;
-      notificationMessage += ` (Total Paid: ₹${invoiceUpdateDetails.totalPaid.toLocaleString()})`;
+      notificationMessage += `📊 Outstanding Balance: ₹${invoiceUpdateDetails.oldBalance.toLocaleString()} → ₹${invoiceUpdateDetails.newBalance.toLocaleString()}\n`;
+      notificationMessage += `💵 Total Paid: ₹${invoiceUpdateDetails.totalPaid.toLocaleString()}\n`;
     }
+    notificationMessage += `👨‍💼 Updated by: ${userName}`;
     
-    await sendNotification(notificationMessage, req.body.user || (req.user && req.user.name));
+    await sendNotification(notificationMessage, userName);
     
     res.json({ payment });
   } catch (err) {
@@ -159,12 +174,24 @@ router.delete('/:id', requireSuperAdmin, async (req, res) => {
       return res.status(404).json({ error: 'Payment not found' });
     }
     
-    // Send detailed notification
-    let notificationMessage = `Payment deleted: ₹${deleted.amount.toLocaleString()} for ${deleted.customer_name}`;
-    if (deleted.payment_mode) {
-      notificationMessage += ` (${deleted.payment_mode})`;
+    // Send detailed notification with professional formatting
+    const currentTime = new Date().toLocaleString('en-IN', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+    
+    let notificationMessage = `🗑️ Payment Deleted | ${currentTime}\n`;
+    notificationMessage += `👤 Student: ${deleted.customer_name}\n`;
+    notificationMessage += `💳 Amount: ₹${deleted.amount.toLocaleString()}\n`;
+    notificationMessage += `🏦 Payment Mode: ${deleted.payment_mode || 'Not specified'}\n`;
+    if (deleted.reference_number) {
+      notificationMessage += `📝 Reference: ${deleted.reference_number}\n`;
     }
-    notificationMessage += ` - Deleted by Super Admin`;
+    notificationMessage += `⚠️ Deleted by Super Admin: ${req.user.name}`;
     
     await sendNotification(notificationMessage, req.user.name);
     
@@ -198,7 +225,6 @@ router.patch('/:id', async (req, res) => {
     }
     
     // Send detailed notification for specific field changes
-    let notificationMessage = `Payment updated for ${updated.customer_name}`;
     let changes = [];
     
     if (amount !== undefined && amount !== originalPayment.amount) {
@@ -222,8 +248,28 @@ router.patch('/:id', async (req, res) => {
     }
     
     if (changes.length > 0) {
-      notificationMessage += ` - ${changes.join(', ')}`;
-      await sendNotification(notificationMessage, req.body.user || 'System');
+      const currentTime = new Date().toLocaleString('en-IN', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+      
+      const userName = req.body.user || 'System';
+      
+      let notificationMessage = `🔄 Payment Updated | ${currentTime}\n`;
+      notificationMessage += `👤 Student: ${updated.customer_name}\n`;
+      notificationMessage += `📝 Changes Made:\n`;
+      
+      changes.forEach((change, index) => {
+        notificationMessage += `   ${index + 1}. ${change}\n`;
+      });
+      
+      notificationMessage += `👨‍💼 Updated by: ${userName}`;
+      
+      await sendNotification(notificationMessage, userName);
     }
     
     res.json({ success: true, payment: updated });

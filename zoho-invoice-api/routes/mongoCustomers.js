@@ -145,15 +145,36 @@ router.post('/', async (req, res) => {
       invoice = await Invoice.create(invoiceData);
     }
 
-    // Send detailed notification
-    let notificationMessage = `Added student: ${created.customer_name}`;
+    // Send detailed notification with professional formatting
+    const currentTime = new Date().toLocaleString('en-IN', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+    
+    const userName = req.body.user || (req.user && req.user.name) || 'System';
+    
+    let notificationMessage = `➕ Student Added | ${currentTime}\n`;
+    notificationMessage += `👤 Student: ${created.customer_name}\n`;
+    notificationMessage += `📧 Email: ${created.email || 'Not provided'}\n`;
+    notificationMessage += `📱 Phone: ${created.phone || 'Not provided'}\n`;
+    notificationMessage += `📚 Course: ${created.cf_pgdca_course || 'Not specified'}\n`;
+    notificationMessage += `👥 Batch: ${created.cf_batch_name || 'Not specified'}\n`;
+    notificationMessage += `📊 Status: ${created.status}\n`;
+    
     if (req.body.course_fees && req.body.course_fees > 0) {
-      notificationMessage += ` with course fees ₹${req.body.course_fees.toLocaleString()}`;
+      notificationMessage += `💰 Course Fees: ₹${req.body.course_fees.toLocaleString()}\n`;
       if (invoice) {
-        notificationMessage += ` - Invoice created (Total: ₹${invoice.total.toLocaleString()}, Balance: ₹${invoice.balance.toLocaleString()})`;
+        notificationMessage += `📄 Invoice Created (Total: ₹${invoice.total.toLocaleString()}, Balance: ₹${invoice.balance.toLocaleString()})\n`;
       }
     }
-    await sendNotification(notificationMessage, req.body.user || (req.user && req.user.name));
+    
+    notificationMessage += `👨‍💼 Added by: ${userName}`;
+    
+    await sendNotification(notificationMessage, userName);
     
     res.json({ 
       customer: created, 
@@ -291,8 +312,17 @@ router.patch('/:id', async (req, res) => {
       }
     }
 
-    // Send detailed notification with specific field changes
-    let notificationMessage = `Updated student: ${updated.customer_name}`;
+    // Send detailed notification with professional formatting
+    const currentTime = new Date().toLocaleString('en-IN', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+    
+    const userName = req.body.user || (req.user && req.user.name) || 'System';
     let changes = [];
     
     // Track specific field changes
@@ -350,9 +380,24 @@ router.patch('/:id', async (req, res) => {
     }
     
     if (changes.length > 0) {
-      notificationMessage += ` - ${changes.join(', ')}`;
+      let notificationMessage = `🔄 Student Updated | ${currentTime}\n`;
+      notificationMessage += `👤 Student: ${updated.customer_name}\n`;
+      notificationMessage += `📝 Changes Made:\n`;
+      
+      changes.forEach((change, index) => {
+        notificationMessage += `   ${index + 1}. ${change}\n`;
+      });
+      
+      notificationMessage += `👨‍💼 Updated by: ${userName}`;
+      
+      await sendNotification(notificationMessage, userName);
     } else {
-      notificationMessage += ` - No changes detected`;
+      let notificationMessage = `ℹ️ Student Info | ${currentTime}\n`;
+      notificationMessage += `👤 Student: ${updated.customer_name}\n`;
+      notificationMessage += `📝 No changes detected\n`;
+      notificationMessage += `👨‍💼 Updated by: ${userName}`;
+      
+      await sendNotification(notificationMessage, userName);
     }
     
     await sendNotification(notificationMessage, req.body.user || (req.user && req.user.name));
@@ -374,8 +419,31 @@ router.delete('/:id', async (req, res) => {
     if (!deleted) {
       return res.status(404).json({ error: 'Customer not found' });
     }
-    // Send notification
-    await sendNotification(`Deleted student: ${deleted.customer_name}`, req.body.user || (req.user && req.user.name));
+    // Send detailed notification with professional formatting
+    const currentTime = new Date().toLocaleString('en-IN', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+    
+    const userName = req.body.user || (req.user && req.user.name) || 'System';
+    
+    let notificationMessage = `🗑️ Student Deleted | ${currentTime}\n`;
+    notificationMessage += `👤 Student: ${deleted.customer_name}\n`;
+    notificationMessage += `📧 Email: ${deleted.email || 'Not provided'}\n`;
+    notificationMessage += `📱 Phone: ${deleted.phone || 'Not provided'}\n`;
+    notificationMessage += `📚 Course: ${deleted.cf_pgdca_course || 'Not specified'}\n`;
+    notificationMessage += `👥 Batch: ${deleted.cf_batch_name || 'Not specified'}\n`;
+    notificationMessage += `📊 Status: ${deleted.status}\n`;
+    if (deleted.course_fees && deleted.course_fees > 0) {
+      notificationMessage += `💰 Course Fees: ₹${deleted.course_fees.toLocaleString()}\n`;
+    }
+    notificationMessage += `⚠️ Deleted by: ${userName}`;
+    
+    await sendNotification(notificationMessage, userName);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message || 'Internal server error' });
