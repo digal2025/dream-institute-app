@@ -291,8 +291,42 @@ router.patch('/:id', async (req, res) => {
       }
     }
 
-    // Send detailed notification
+    // Send detailed notification with specific field changes
     let notificationMessage = `Updated student: ${updated.customer_name}`;
+    let changes = [];
+    
+    // Track specific field changes
+    if (req.body.customer_name !== undefined && req.body.customer_name !== currentCustomer.customer_name) {
+      changes.push(`Name: "${currentCustomer.customer_name}" → "${req.body.customer_name}"`);
+    }
+    
+    if (req.body.email !== undefined && req.body.email !== currentCustomer.email) {
+      const oldEmail = currentCustomer.email || 'None';
+      const newEmail = req.body.email || 'None';
+      changes.push(`Email: "${oldEmail}" → "${newEmail}"`);
+    }
+    
+    if (req.body.phone !== undefined && req.body.phone !== currentCustomer.phone) {
+      const oldPhone = currentCustomer.phone || 'None';
+      const newPhone = req.body.phone || 'None';
+      changes.push(`Phone: "${oldPhone}" → "${newPhone}"`);
+    }
+    
+    if (req.body.cf_pgdca_course !== undefined && req.body.cf_pgdca_course !== currentCustomer.cf_pgdca_course) {
+      const oldCourse = currentCustomer.cf_pgdca_course || 'None';
+      const newCourse = req.body.cf_pgdca_course || 'None';
+      changes.push(`Course: "${oldCourse}" → "${newCourse}"`);
+    }
+    
+    if (req.body.cf_batch_name !== undefined && req.body.cf_batch_name !== currentCustomer.cf_batch_name) {
+      const oldBatch = currentCustomer.cf_batch_name || 'None';
+      const newBatch = req.body.cf_batch_name || 'None';
+      changes.push(`Batch: "${oldBatch}" → "${newBatch}"`);
+    }
+    
+    if (req.body.status !== undefined && req.body.status !== currentCustomer.status) {
+      changes.push(`Status: ${currentCustomer.status} → ${req.body.status}`);
+    }
     
     // Track course fee changes
     if (req.body.course_fees !== undefined && req.body.course_fees !== currentCustomer.course_fees) {
@@ -300,21 +334,25 @@ router.patch('/:id', async (req, res) => {
       const newFees = req.body.course_fees || 0;
       
       if (oldFees === 0 && newFees > 0) {
-        notificationMessage += ` - Course fees added: ₹${newFees.toLocaleString()}`;
+        changes.push(`Course fees added: ₹${newFees.toLocaleString()}`);
       } else if (oldFees > 0 && newFees > 0 && oldFees !== newFees) {
-        notificationMessage += ` - Course fees updated: ₹${oldFees.toLocaleString()} → ₹${newFees.toLocaleString()}`;
+        changes.push(`Course fees: ₹${oldFees.toLocaleString()} → ₹${newFees.toLocaleString()}`);
       }
       
       // Add invoice details
       if (invoice) {
         if (existingInvoice) {
-          notificationMessage += ` - Invoice updated (Total: ₹${invoice.total.toLocaleString()}, Balance: ₹${invoice.balance.toLocaleString()}, Paid: ₹${invoice.payment_made.toLocaleString()})`;
+          changes.push(`Invoice updated (Total: ₹${invoice.total.toLocaleString()}, Balance: ₹${invoice.balance.toLocaleString()}, Paid: ₹${invoice.payment_made.toLocaleString()})`);
         } else {
-          notificationMessage += ` - Invoice created (Total: ₹${invoice.total.toLocaleString()}, Balance: ₹${invoice.balance.toLocaleString()})`;
+          changes.push(`Invoice created (Total: ₹${invoice.total.toLocaleString()}, Balance: ₹${invoice.balance.toLocaleString()})`);
         }
       }
+    }
+    
+    if (changes.length > 0) {
+      notificationMessage += ` - ${changes.join(', ')}`;
     } else {
-      notificationMessage += ` - General details updated`;
+      notificationMessage += ` - No changes detected`;
     }
     
     await sendNotification(notificationMessage, req.body.user || (req.user && req.user.name));

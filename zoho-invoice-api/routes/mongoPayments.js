@@ -197,26 +197,32 @@ router.patch('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Payment not found' });
     }
     
-    // Send detailed notification for significant changes
+    // Send detailed notification for specific field changes
     let notificationMessage = `Payment updated for ${updated.customer_name}`;
-    let hasChanges = false;
+    let changes = [];
     
     if (amount !== undefined && amount !== originalPayment.amount) {
-      notificationMessage += ` - Amount: ₹${originalPayment.amount.toLocaleString()} → ₹${amount.toLocaleString()}`;
-      hasChanges = true;
+      changes.push(`Amount: ₹${originalPayment.amount.toLocaleString()} → ₹${amount.toLocaleString()}`);
     }
     
     if (payment_mode !== undefined && payment_mode !== originalPayment.payment_mode) {
-      notificationMessage += ` - Mode: ${originalPayment.payment_mode} → ${payment_mode}`;
-      hasChanges = true;
+      changes.push(`Payment Mode: ${originalPayment.payment_mode || 'None'} → ${payment_mode}`);
+    }
+    
+    if (reference_number !== undefined && reference_number !== originalPayment.reference_number) {
+      const oldRef = originalPayment.reference_number || 'None';
+      const newRef = reference_number || 'None';
+      changes.push(`Reference: "${oldRef}" → "${newRef}"`);
     }
     
     if (date !== undefined && new Date(date).getTime() !== new Date(originalPayment.date).getTime()) {
-      notificationMessage += ` - Date updated`;
-      hasChanges = true;
+      const oldDate = new Date(originalPayment.date).toLocaleDateString();
+      const newDate = new Date(date).toLocaleDateString();
+      changes.push(`Date: ${oldDate} → ${newDate}`);
     }
     
-    if (hasChanges) {
+    if (changes.length > 0) {
+      notificationMessage += ` - ${changes.join(', ')}`;
       await sendNotification(notificationMessage, req.body.user || 'System');
     }
     
