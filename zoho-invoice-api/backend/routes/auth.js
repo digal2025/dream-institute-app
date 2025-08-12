@@ -84,8 +84,7 @@ router.post('/login', async (req, res) => {
     const token = jwt.sign({ id: user._id, email: user.email, name: user.name }, JWT_SECRET, { expiresIn: '7d' });
     console.log('🔍 JWT token generated successfully');
     
-    console.log('🔍 User role:', user.role);
-    console.log('🔍 Sending response with user data:', { id: user._id, name: user.name, email: user.email, role: user.role || 'admin' });
+    // User role and response data logging removed for security
     
     res.json({ success: true, token, user: { id: user._id, name: user.name, email: user.email, role: user.role || 'admin' } });
   } catch (err) {
@@ -122,7 +121,7 @@ router.post('/admin-reset-password-request', async (req, res) => {
       return res.json({ success: true, msg: 'If your email is registered, you will receive an OTP.' });
     }
     
-    console.log('✅ [ADMIN-RESET] User found:', user.name, '(' + user.email + ')');
+    console.log('✅ [ADMIN-RESET] User found for password reset');
     
     // Generate OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -398,7 +397,7 @@ router.post('/change-password', authMiddleware, async (req, res) => {
     user.passwordHash = newPasswordHash;
     await user.save();
     
-    console.log('🔄 Password changed successfully for user:', user.email);
+    console.log('🔄 Password changed successfully');
     
     res.json({ 
       success: true, 

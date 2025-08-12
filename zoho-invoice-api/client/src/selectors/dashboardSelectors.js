@@ -86,16 +86,7 @@ export function getFilteredStudents({ students, paymentsByMonth, months, search,
     const invoiceAmount = invoiceAmountMap[s.contact_id] || 0;
     const outstanding = invoiceAmount - totalPaid;
     
-    // Debug log for outstanding calculation (only for students with course fees)
-    if (s.course_fees && s.course_fees > 0) {
-      console.log(`Outstanding calculation for ${s.customer_name}:`, {
-        contact_id: s.contact_id,
-        course_fees: s.course_fees,
-        invoiceAmount,
-        totalPaid,
-        outstanding: outstanding > 0 ? outstanding : 0
-      });
-    }
+    // Debug logging removed for data privacy
     
     return {
       ...s,

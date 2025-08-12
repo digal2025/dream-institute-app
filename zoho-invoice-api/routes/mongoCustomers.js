@@ -215,38 +215,23 @@ router.patch('/:id', async (req, res) => {
     const isAddingCourseFees = (!currentCustomer.course_fees || currentCustomer.course_fees === 0) && req.body.course_fees && req.body.course_fees > 0;
     const isUpdatingCourseFees = currentCustomer.course_fees && req.body.course_fees && req.body.course_fees > 0 && req.body.course_fees !== currentCustomer.course_fees;
     
-    console.log('Edit Student Debug:', {
-      customerId: req.params.id,
-      currentCourseFees: currentCustomer.course_fees,
-      newCourseFees: req.body.course_fees,
-      isAddingCourseFees,
-      isUpdatingCourseFees,
-      willCreateInvoice: isAddingCourseFees || isUpdatingCourseFees
-    });
+    // Debug logging removed for data privacy
     
     if (isAddingCourseFees || isUpdatingCourseFees) {
       // Check if student already has an invoice
       const allInvoices = await Invoice.find({ customer_id: updated.contact_id });
       existingInvoice = allInvoices[0]; // Get the first one
       
-      console.log('Invoice Check:', {
-        customerId: updated.contact_id,
-        totalInvoicesFound: allInvoices.length,
-        existingInvoiceFound: !!existingInvoice,
-        existingInvoiceId: existingInvoice ? existingInvoice.invoice_id : null,
-        existingInvoiceTotal: existingInvoice ? existingInvoice.total : null,
-        existingInvoiceBalance: existingInvoice ? existingInvoice.balance : null,
-        allInvoiceIds: allInvoices.map(inv => inv.invoice_id)
-      });
+      // Invoice check debug logging removed for data privacy
       
       if (existingInvoice) {
         // If there are multiple invoices, delete the old ones first
         if (allInvoices.length > 1) {
-          console.log('Multiple invoices found, deleting old ones...');
-          for (let i = 1; i < allInvoices.length; i++) {
-            await Invoice.findByIdAndDelete(allInvoices[i]._id);
-            console.log('Deleted old invoice:', allInvoices[i].invoice_id);
-          }
+                  // Multiple invoices found, deleting old ones...
+        for (let i = 1; i < allInvoices.length; i++) {
+          await Invoice.findByIdAndDelete(allInvoices[i]._id);
+          // Invoice deletion logged for audit purposes
+        }
         }
         
         // Update existing invoice
