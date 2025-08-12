@@ -324,6 +324,7 @@ router.patch('/:id', async (req, res) => {
     
     const userName = req.body.user || (req.user && req.user.name) || 'System';
     let changes = [];
+    let notificationMessage = ''; // Initialize notificationMessage variable
     
     // Track specific field changes
     if (req.body.customer_name !== undefined && req.body.customer_name !== currentCustomer.customer_name) {
@@ -380,7 +381,7 @@ router.patch('/:id', async (req, res) => {
     }
     
     if (changes.length > 0) {
-      let notificationMessage = `🔄 Student Updated | ${currentTime}\n`;
+      notificationMessage = `🔄 Student Updated | ${currentTime}\n`;
       notificationMessage += `👤 Student: ${updated.customer_name}\n`;
       notificationMessage += `📝 Changes Made:\n`;
       
@@ -389,18 +390,15 @@ router.patch('/:id', async (req, res) => {
       });
       
       notificationMessage += `👨‍💼 Updated by: ${userName}`;
-      
-      await sendNotification(notificationMessage, userName);
     } else {
-      let notificationMessage = `ℹ️ Student Info | ${currentTime}\n`;
+      notificationMessage = `ℹ️ Student Info | ${currentTime}\n`;
       notificationMessage += `👤 Student: ${updated.customer_name}\n`;
       notificationMessage += `📝 No changes detected\n`;
       notificationMessage += `👨‍💼 Updated by: ${userName}`;
-      
-      await sendNotification(notificationMessage, userName);
     }
     
-    await sendNotification(notificationMessage, req.body.user || (req.user && req.user.name));
+    // Send notification
+    await sendNotification(notificationMessage, userName);
     
     res.json({ 
       customer: updated, 
