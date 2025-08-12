@@ -1,6 +1,7 @@
 const express = require('express');
 const Customer = require('../backend/models/Customer');
 const Invoice = require('../backend/models/Invoice');
+const NotificationService = require('../services/notificationService');
 const router = express.Router();
 const mongoose = require('mongoose');
 const Payment = require('../backend/models/Payment');
@@ -88,19 +89,7 @@ router.post('/check-duplicates', async (req, res) => {
 });
 
 
-// Helper to send notification
-const sendNotification = async (message, user) => {
-  try {
-    const Notification = require('../backend/models/Notification');
-    await Notification.create({
-      message,
-      user,
-      time: new Date(),
-      read: false,
-      type: 'student',
-    });
-  } catch (err) { /* ignore */ }
-};
+
 
 // Add new customer
 router.post('/', async (req, res) => {
@@ -174,7 +163,19 @@ router.post('/', async (req, res) => {
     
     notificationMessage += `👨‍💼 Added by: ${userName}`;
     
-    await sendNotification(notificationMessage, userName);
+    // Create minimal notification
+    await NotificationService.createNotification({
+      type: 'student_add',
+      entityId: created.contact_id,
+      entityName: created.customer_name,
+      user: userName,
+      message: `👤 ${created.customer_name} added`,
+      details: {
+        course: created.cf_pgdca_course,
+        batch: created.cf_batch_name,
+        hasInvoice: !!invoice
+      }
+    });
     
     res.json({ 
       customer: created, 
@@ -397,8 +398,19 @@ router.patch('/:id', async (req, res) => {
       notificationMessage += `👨‍💼 Updated by: ${userName}`;
     }
     
-    // Send notification
-    await sendNotification(notificationMessage, userName);
+    // Create minimal notification
+    const changeSummary = changes.length > 0 ? changes.slice(0, 2).join(', ') : 'No changes';
+    await NotificationService.createNotification({
+      type: 'student_update',
+      entityId: updated.contact_id,
+      entityName: updated.customer_name,
+      user: userName,
+      message: `✏️ ${updated.customer_name} updated`,
+      details: {
+        changes: changes.slice(0, 3), // Only store first 3 changes
+        hasInvoice: !!invoice
+      }
+    });
     
     res.json({ 
       customer: updated, 
@@ -441,7 +453,19 @@ router.delete('/:id', async (req, res) => {
     }
     notificationMessage += `⚠️ Deleted by: ${userName}`;
     
-    await sendNotification(notificationMessage, userName);
+    // Create minimal notification
+    await NotificationService.createNotification({
+      type: 'student_delete',
+      entityId: deleted.contact_id,
+      entityName: deleted.customer_name,
+      user: userName,
+      message: `🗑️ ${deleted.customer_name} deleted`,
+      details: {
+        course: deleted.cf_pgdca_course,
+        batch: deleted.cf_batch_name
+      }
+    });
+    
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message || 'Internal server error' });

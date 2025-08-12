@@ -44,6 +44,7 @@ const mongoCustomersRouter = require('./routes/mongoCustomers');
 const mongoPaymentsRouter = require('./routes/mongoPayments');
 const mongoInvoicesRouter = require('./routes/mongoInvoices');
 const notificationsRouter = require('./routes/notifications');
+
 const smsRouter = require('./routes/sms');
 const studentRouter = require('./backend/routes/student');
 
@@ -101,6 +102,7 @@ app.use('/api/mongo/customers', mongoCustomersRouter);
 app.use('/api/mongo/payments', mongoPaymentsRouter);
 app.use('/api/mongo/invoices', mongoInvoicesRouter);
 app.use('/api/notifications', notificationsRouter);
+
 app.use('/api/sms', smsRouter);
 app.use('/api/student', studentRouter);
 

@@ -1,5 +1,5 @@
 // App.js - Main dashboard for Fee Management (restored from GitHub)
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { DataGrid } from '@mui/x-data-grid';
 import IconButton from '@mui/material/IconButton';
@@ -25,7 +25,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import AddCustomerDialog from '../components/dialogs/AddCustomerDialog';
 import Button from '@mui/material/Button';
 import AddPaymentDialog from '../components/dialogs/AddPaymentDialog';
-import NotificationsIcon from '@mui/icons-material/Notifications';
+
 import Drawer from '@mui/material/Drawer';
 import Badge from '@mui/material/Badge';
 import SmsReminderDialog from '../components/SmsReminderDialog';
@@ -62,26 +62,11 @@ import Grid from '@mui/material/Grid';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import Collapse from '@mui/material/Collapse';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import NotificationsIcon from '@mui/icons-material/Notifications';
+import FilterListIcon from '@mui/icons-material/FilterList';
+import FullscreenIcon from '@mui/icons-material/Fullscreen';
+import FullscreenExitIcon from '@mui/icons-material/FullscreenExit';
 
-// Helper to format notification date
-function formatNotificationDate(date) {
-  if (!date) return '';
-  const d = new Date(date);
-  const day = d.toLocaleString('en-US', { weekday: 'short' });
-  const dayNum = d.getDate();
-  const nth = (n) => n + (n > 3 && n < 21 ? 'th' : ['th', 'st', 'nd', 'rd', 'th'][Math.min(n % 10, 4)]);
-  const month = d.toLocaleString('en-US', { month: 'long' });
-  const year = d.getFullYear();
-  let hours = d.getHours();
-  const minutes = d.getMinutes().toString().padStart(2, '0');
-  const ampm = hours >= 12 ? 'PM' : 'AM';
-  hours = hours % 12;
-  hours = hours ? hours : 12; // the hour '0' should be '12'
-  return `${day} ${nth(dayNum)} ${month}, ${year} at ${hours}:${minutes} ${ampm}`;
-}
 
 // Modern Edit Student Dialog
 function EditStudentDialog({ open, onClose, students, onStudentUpdated, currentUserRole, currentUser }) {
@@ -467,8 +452,14 @@ function AdminDashboard() {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [expandedNotifications, setExpandedNotifications] = useState(new Set());
   const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [notificationPage, setNotificationPage] = useState(1);
+  const [notificationFilters, setNotificationFilters] = useState({
+    action: 'all',
+    dateRange: 'all'
+  });
+  const [notificationsFullWidth, setNotificationsFullWidth] = useState(false);
+
 
   // Efficient loading overlay state
   const [initialLoad, setInitialLoad] = useState(true);
@@ -574,92 +565,126 @@ function AdminDashboard() {
     }
   }, [initialLoad, loading, paymentsLoading]);
 
-  // Fetch notifications from backend on mount
-  useEffect(() => {
-    fetchNotifications();
-  }, []);
-
-  // Notification handler - Backend now handles all notifications
   const { user: currentUser, logout } = useAuth();
 
-  // Fetch fresh notifications from backend
+  // Notification functions
   const fetchNotifications = async () => {
     setNotificationsLoading(true);
-    
     try {
-      const response = await fetch('/api/notifications?limit=1000');
+      const response = await fetch(`/api/notifications?page=${notificationPage}&limit=20`);
       const data = await response.json();
-      
       if (data.notifications) {
         setNotifications(data.notifications);
-        
-        // Update unread count
-        const unreadCount = data.notifications.filter(n => n && !n.read).length;
-        setUnreadCount(unreadCount);
       }
     } catch (error) {
       console.error('Error fetching notifications:', error);
-      // Keep existing notifications if fetch fails
     } finally {
       setNotificationsLoading(false);
     }
   };
 
-  // Fetch fresh notifications and mark as read when opening sidebar
-  const handleOpenNotifications = async () => {
-    setNotificationsOpen(true);
-    await fetchNotifications();
-    
-    // Mark all as read in backend
-    const unreadNotifications = notifications.filter(n => n && !n.read);
-    if (unreadNotifications.length > 0) {
-      try {
-        await Promise.all(
-          unreadNotifications.map(n =>
-            fetch(`/api/notifications/${n._id}`, { method: 'PATCH' })
-          )
-        );
-        // Update local state to mark as read
-        setNotifications(prev => prev.map(n => n ? { ...n, read: true } : n));
-        setUnreadCount(0);
-      } catch (error) {
-        console.error('Error marking notifications as read:', error);
-      }
+  const fetchUnreadCount = async () => {
+    try {
+      const response = await fetch('/api/notifications/unread-count');
+      const data = await response.json();
+      setUnreadCount(data.count || 0);
+    } catch (error) {
+      console.error('Error fetching unread count:', error);
     }
   };
 
-  // Clear notifications in backend
+  const handleOpenNotifications = async () => {
+    setNotificationsOpen(true);
+    await fetchNotifications();
+    await fetchUnreadCount();
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await fetch('/api/notifications/mark-all-read', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user: currentUser?.name })
+      });
+      setUnreadCount(0);
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    } catch (error) {
+      console.error('Error marking notifications as read:', error);
+    }
+  };
+
   const handleClearNotifications = async () => {
-    await fetch('/api/notifications', { method: 'DELETE' });
-    setNotifications([]);
-    setUnreadCount(0);
-    setExpandedNotifications(new Set());
+    try {
+      await fetch('/api/notifications', { method: 'DELETE' });
+      setNotifications([]);
+      setUnreadCount(0);
+    } catch (error) {
+      console.error('Error clearing notifications:', error);
+    }
   };
 
-  // Toggle notification expansion
-  const toggleNotificationExpansion = (notificationId) => {
-    setExpandedNotifications(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(notificationId)) {
-        newSet.delete(notificationId);
-      } else {
-        newSet.add(notificationId);
+  // Filter notifications based on current filters
+  const filteredNotifications = useMemo(() => {
+    let filtered = [...notifications];
+
+    // Filter by action type
+    if (notificationFilters.action !== 'all') {
+      filtered = filtered.filter(notification => notification.type === notificationFilters.action);
+    }
+
+    // Filter by date range
+    if (notificationFilters.dateRange !== 'all') {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
+      switch (notificationFilters.dateRange) {
+        case 'today':
+          filtered = filtered.filter(notification => {
+            const notificationDate = new Date(notification.timestamp);
+            return notificationDate >= today;
+          });
+          break;
+        case 'week':
+          const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+          filtered = filtered.filter(notification => {
+            const notificationDate = new Date(notification.timestamp);
+            return notificationDate >= weekAgo;
+          });
+          break;
+        case 'month':
+          const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+          filtered = filtered.filter(notification => {
+            const notificationDate = new Date(notification.timestamp);
+            return notificationDate >= monthAgo;
+          });
+          break;
+        default:
+          break;
       }
-      return newSet;
-    });
+    }
+
+    return filtered;
+  }, [notifications, notificationFilters]);
+
+  const handleFilterChange = (filterType, value) => {
+    setNotificationFilters(prev => ({
+      ...prev,
+      [filterType]: value
+    }));
+    // Reset to first page when filters change
+    setNotificationPage(1);
   };
 
-  // Check if notification should be collapsed (more than 2 lines)
-  const shouldCollapseNotification = (message) => {
-    const lines = message.split('\n').filter(line => line.trim().length > 0);
-    return lines.length > 2;
-  };
+  // Fetch notifications on mount and when page changes
+  useEffect(() => {
+    fetchUnreadCount();
+  }, []);
 
-  // Get preview message (first 2 lines)
-  const getPreviewMessage = (message) => {
-    const lines = message.split('\n').filter(line => line.trim().length > 0);
-    return lines.slice(0, 2).join('\n');
-  };
+  useEffect(() => {
+    if (notificationsOpen) {
+      fetchNotifications();
+    }
+  }, [notificationPage, notificationsOpen]);
 
   // Edit Student Dialog state
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -676,34 +701,7 @@ function AdminDashboard() {
     if (editDialogOpen) fetchAllStudents();
   }, [editDialogOpen, fetchAllStudents]);
 
-  // Notification pagination state
-  const [notificationPage, setNotificationPage] = useState(1);
-  const notificationsPerPage = 10;
-  const paginatedNotifications = notifications.slice((notificationPage - 1) * notificationsPerPage, notificationPage * notificationsPerPage);
 
-  // Helper to group notifications by day
-  function groupNotificationsByDay(notifications) {
-    const groups = { Today: [], Yesterday: [], 'Last Week': [], Older: [] };
-    const now = new Date();
-    const today = now.setHours(0, 0, 0, 0);
-    const yesterday = new Date(today - 24 * 60 * 60 * 1000);
-    const lastWeek = new Date(today - 7 * 24 * 60 * 60 * 1000);
-    notifications.forEach(n => {
-      if (!n.time) return;
-      const d = new Date(n.time);
-      const t = d.setHours(0, 0, 0, 0);
-      if (t === today) {
-        groups.Today.push(n);
-      } else if (t === yesterday.getTime()) {
-        groups.Yesterday.push(n);
-      } else if (t > lastWeek.getTime()) {
-        groups['Last Week'].push(n);
-      } else {
-        groups.Older.push(n);
-      }
-    });
-    return groups;
-  }
 
   // Admin user creation handlers
   const handleAdminFormChange = (e) => {
@@ -966,11 +964,14 @@ function AdminDashboard() {
               <AccountCircleIcon sx={{ fontSize: 24 }} />
             </Avatar>
           </Box>
+          
+          {/* Notification Icon */}
           <Badge badgeContent={unreadCount} color="error" overlap="circular" sx={{ '& .MuiBadge-badge': { top: 6, right: 6, fontWeight: 700, fontSize: 13, minWidth: 22, height: 22, borderRadius: '50%', boxShadow: '0 1px 4px #e0e7ff' } }}>
-            <IconButton onClick={handleOpenNotifications} title="Notifications">
-              <NotificationsIcon sx={{ color: '#6366f1', fontSize: 28 }} />
+            <IconButton onClick={handleOpenNotifications} title="Notifications" sx={{ color: '#6366f1', '&:hover': { background: 'rgba(99, 102, 241, 0.1)' } }}>
+              <NotificationsIcon sx={{ fontSize: 28 }} />
             </IconButton>
           </Badge>
+
         </div>
       </div>
       <div style={{ background: '#fff', borderRadius: 12, padding: 24, boxShadow: '0 2px 8px #e0e7ff', width: '100%', minWidth: 320, boxSizing: 'border-box' }}>
@@ -1346,166 +1347,7 @@ function AdminDashboard() {
           </Box>
         </Paper>
       </Dialog>
-      {/* Notifications Drawer */}
-      <Drawer anchor="right" open={notificationsOpen} onClose={() => setNotificationsOpen(false)}
-        PaperProps={{ sx: { width: 400, p: 0, background: 'linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%)', boxShadow: '0 8px 32px 0 rgba(99,102,241,0.12)' } }}>
-        <div style={{ padding: 18, borderBottom: '1.5px solid #e0e7ff', fontWeight: 500, fontSize: 18, color: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'space-between', letterSpacing: 0.1 }}>
-          <span>Notifications</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <IconButton 
-              onClick={fetchNotifications} 
-              disabled={notificationsLoading}
-              sx={{ 
-                color: '#6366f1',
-                '&:hover': { background: 'rgba(99, 102, 241, 0.1)' },
-                '&:disabled': { color: '#9ca3af' }
-              }}
-            >
-              <RefreshIcon sx={{ fontSize: 20 }} />
-            </IconButton>
-            <Button onClick={handleClearNotifications} size="small" variant="text" color="error" sx={{ fontWeight: 500, fontSize: 14, px: 0, py: 0, minWidth: 0, textTransform: 'none' }}>
-              Clear
-            </Button>
-            <IconButton onClick={() => setNotificationsOpen(false)}><CloseIcon /></IconButton>
-          </div>
-        </div>
-        <div style={{ padding: 0, overflowY: 'auto', height: '100%' }}>
-          {notificationsLoading ? (
-            <div style={{ 
-              display: 'flex', 
-              flexDirection: 'column', 
-              alignItems: 'center', 
-              justifyContent: 'center', 
-              height: '200px',
-              gap: 16
-            }}>
-              <CircularProgress size={40} sx={{ color: '#6366f1' }} />
-              <div style={{ color: '#6366f1', fontSize: 16, fontWeight: 500 }}>Loading notifications...</div>
-            </div>
-          ) : notifications.length === 0 ? (
-            <div style={{ color: '#888', fontSize: 16, textAlign: 'center', marginTop: 32 }}>No notifications yet.</div>
-          ) : (
-            <div style={{ padding: 12 }}>
-              {(() => {
-                const groups = groupNotificationsByDay(paginatedNotifications.filter(Boolean));
-                return Object.entries(groups).map(([group, items]) =>
-                  items.length > 0 ? (
-                    <div key={group}>
-                      <div style={{
-                        fontWeight: 700,
-                        color: '#3b82f6',
-                        fontSize: 14,
-                        margin: '18px 0 8px 0',
-                        letterSpacing: 0.3,
-                        borderBottom: '2px solid #6366f1',
-                        width: '100%',
-                        padding: '10px 10px 10px 10px',
-                        background: 'linear-gradient(90deg, #e0e7ff 0%, #f8fafc 100%)',
-                        borderRadius: 3,
-                        boxShadow: '0 1px 4px #e0e7ff44',
-                      }}>{group}</div>
-                      {items.map((n, idx) => {
-                        const notificationId = n._id || idx;
-                        const isExpanded = expandedNotifications.has(notificationId);
-                        const shouldCollapse = shouldCollapseNotification(n.message);
-                        const displayMessage = shouldCollapse && !isExpanded ? getPreviewMessage(n.message) : n.message;
-                        
-                        return (
-                          <div key={notificationId} style={{
-                            marginBottom: 0,
-                            background: n.read ? 'transparent' : '#e0e7ff',
-                            borderRadius: 6,
-                            boxShadow: 'none',
-                            padding: '8px 10px',
-                            display: 'flex',
-                            alignItems: 'flex-start',
-                            gap: 14,
-                            borderLeft: 'none',
-                            borderBottom: '1.5px solid #e0e7ff',
-                            position: 'relative',
-                            minHeight: 48
-                          }}>
-                            <div style={{ flex: 1 }}>
-                              <div style={{ 
-                                fontWeight: 500, 
-                                color: '#222', 
-                                fontSize: 14, 
-                                marginBottom: 2, 
-                                padding: '0 0 0 2px',
-                                whiteSpace: 'pre-line',
-                                lineHeight: 1.4
-                              }}>
-                                {displayMessage}
-                                {shouldCollapse && (
-                                  <Collapse in={isExpanded} timeout="auto" unmountOnExit>
-                                    <div style={{ 
-                                      marginTop: 8, 
-                                      padding: '8px 12px', 
-                                      background: 'rgba(99, 102, 241, 0.05)', 
-                                      borderRadius: 4,
-                                      border: '1px solid rgba(99, 102, 241, 0.1)',
-                                      fontSize: 13,
-                                      color: '#374151'
-                                    }}>
-                                      {n.message}
-                                    </div>
-                                  </Collapse>
-                                )}
-                              </div>
-                              <div style={{ color: '#6366f1', fontSize: 12, paddingLeft: 2 }}>
-                                {`Updated on ${formatNotificationDate(n.time)}`} {n.user && `by ${n.user}`}
-                              </div>
-                              {shouldCollapse && (
-                                <Button
-                                  size="small"
-                                  onClick={() => toggleNotificationExpansion(notificationId)}
-                                  sx={{
-                                    mt: 1,
-                                    minWidth: 'auto',
-                                    p: '2px 8px',
-                                    fontSize: '11px',
-                                    color: '#6366f1',
-                                    '&:hover': {
-                                      background: 'rgba(99, 102, 241, 0.1)'
-                                    }
-                                  }}
-                                >
-                                  {isExpanded ? (
-                                    <>
-                                      <ExpandLessIcon sx={{ fontSize: 14, mr: 0.5 }} />
-                                      Show Less
-                                    </>
-                                  ) : (
-                                    <>
-                                      <ExpandMoreIcon sx={{ fontSize: 14, mr: 0.5 }} />
-                                      Show More
-                                    </>
-                                  )}
-                                </Button>
-                              )}
-                            </div>
-                            {!n.read && <span style={{ position: 'absolute', top: 12, right: 12, width: 8, height: 8, borderRadius: '50%', background: '#ef4444', boxShadow: '0 0 6px #ef4444aa' }} />}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : null
-                );
-              })()}
-              <div style={{ display: 'flex', justifyContent: 'center', marginTop: 10 }}>
-                <Pagination
-                  count={Math.ceil(notifications.length / notificationsPerPage)}
-                  page={notificationPage}
-                  onChange={(_, page) => setNotificationPage(page)}
-                  size="small"
-                  color="primary"
-                  sx={{ '& .MuiPaginationItem-root': { fontWeight: 500 } }}
-                />
-              </div>
-            </div>
-          )}
-        </div>
-      </Drawer>
+
 
       {/* Admin User Management Dialog - Only visible to super_admin */}
       {user && user.role === 'super_admin' && (
@@ -2003,6 +1845,444 @@ function AdminDashboard() {
           </DialogActions>
         </Box>
       </Dialog>
+
+      {/* Notifications Drawer */}
+      <Drawer 
+        anchor="right" 
+        open={notificationsOpen} 
+        onClose={() => setNotificationsOpen(false)}
+        PaperProps={{ 
+          sx: { 
+            width: notificationsFullWidth ? '100vw' : 480, 
+            p: 0, 
+            background: '#ffffff', 
+            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.15), 0 8px 32px rgba(0, 0, 0, 0.1)',
+            transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+          } 
+        }}
+      >
+        {/* Header */}
+        <div style={{ 
+          padding: '24px 24px 16px 24px', 
+          borderBottom: '1px solid #e5e7eb', 
+          background: 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)',
+          position: 'sticky',
+          top: 0,
+          zIndex: 1
+        }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between', 
+            marginBottom: 16
+          }}>
+            <div>
+              <h3 style={{ 
+                margin: 0, 
+                fontSize: 20, 
+                fontWeight: 700, 
+                color: '#1f2937',
+                letterSpacing: '-0.025em'
+              }}>
+                Notifications
+              </h3>
+              <p style={{ 
+                margin: '4px 0 0 0', 
+                fontSize: 14, 
+                color: '#6b7280',
+                fontWeight: 500
+              }}>
+                {unreadCount > 0 ? `${unreadCount} unread` : 'All caught up'}
+              </p>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <IconButton 
+                onClick={fetchNotifications} 
+                disabled={notificationsLoading}
+                sx={{ 
+                  color: '#6366f1',
+                  background: '#f3f4f6',
+                  '&:hover': { background: '#e5e7eb' },
+                  '&:disabled': { color: '#9ca3af' },
+                  width: 36,
+                  height: 36
+                }}
+                title="Refresh notifications"
+              >
+                <RefreshIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+              <IconButton 
+                onClick={() => setNotificationsFullWidth(!notificationsFullWidth)}
+                sx={{ 
+                  color: notificationsFullWidth ? '#6366f1' : '#6b7280',
+                  background: notificationsFullWidth ? '#e0e7ff' : '#f3f4f6',
+                  '&:hover': { 
+                    background: notificationsFullWidth ? '#c7d2fe' : '#e5e7eb',
+                    color: '#6366f1'
+                  },
+                  width: 36,
+                  height: 36,
+                  transition: 'all 0.2s ease'
+                }}
+                title={notificationsFullWidth ? 'Exit full width' : 'Full width'}
+              >
+                {notificationsFullWidth ? 
+                  <FullscreenExitIcon sx={{ fontSize: 18 }} /> : 
+                  <FullscreenIcon sx={{ fontSize: 18 }} />
+                }
+              </IconButton>
+              <IconButton onClick={() => setNotificationsOpen(false)} sx={{ 
+                color: '#6b7280',
+                '&:hover': { background: '#f3f4f6' },
+                width: 36,
+                height: 36
+              }}>
+                <CloseIcon sx={{ fontSize: 20 }} />
+              </IconButton>
+            </div>
+          </div>
+          
+          {/* Action Buttons */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+            <Button 
+              onClick={handleMarkAllAsRead} 
+              size="small" 
+              variant="outlined" 
+              sx={{ 
+                fontWeight: 600, 
+                fontSize: 13, 
+                textTransform: 'none',
+                borderColor: '#6366f1',
+                color: '#6366f1',
+                '&:hover': { 
+                  borderColor: '#4f46e5',
+                  backgroundColor: '#f8fafc'
+                },
+                px: 2,
+                py: 0.5
+              }}
+            >
+              Mark All Read
+            </Button>
+            <Button 
+              onClick={handleClearNotifications} 
+              size="small" 
+              variant="outlined" 
+              color="error"
+              sx={{ 
+                fontWeight: 600, 
+                fontSize: 13, 
+                textTransform: 'none',
+                '&:hover': { 
+                  backgroundColor: '#fef2f2'
+                },
+                px: 2,
+                py: 0.5
+              }}
+            >
+              Clear All
+            </Button>
+          </div>
+
+          {/* Filters */}
+          <div style={{ 
+            display: 'flex', 
+            gap: 12, 
+            alignItems: 'center',
+            padding: '12px 0',
+            borderTop: '1px solid #e5e7eb'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <FilterListIcon sx={{ fontSize: 16, color: '#6b7280' }} />
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Filters:</span>
+            </div>
+            
+            {/* Action Filter */}
+            <FormControl size="small" sx={{ minWidth: 120 }}>
+              <Select
+                value={notificationFilters.action}
+                onChange={(e) => handleFilterChange('action', e.target.value)}
+                displayEmpty
+                sx={{
+                  fontSize: 13,
+                  fontWeight: 500,
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#d1d5db'
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#6366f1'
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#6366f1'
+                  }
+                }}
+              >
+                <MenuItem value="all" sx={{ fontSize: 13 }}>All Actions</MenuItem>
+                <MenuItem value="student_add" sx={{ fontSize: 13 }}>Student Added</MenuItem>
+                <MenuItem value="student_update" sx={{ fontSize: 13 }}>Student Updated</MenuItem>
+                <MenuItem value="student_delete" sx={{ fontSize: 13 }}>Student Deleted</MenuItem>
+                <MenuItem value="payment_add" sx={{ fontSize: 13 }}>Payment Added</MenuItem>
+                <MenuItem value="payment_update" sx={{ fontSize: 13 }}>Payment Updated</MenuItem>
+                <MenuItem value="payment_delete" sx={{ fontSize: 13 }}>Payment Deleted</MenuItem>
+              </Select>
+            </FormControl>
+
+            {/* Date Filter */}
+            <FormControl size="small" sx={{ minWidth: 100 }}>
+              <Select
+                value={notificationFilters.dateRange}
+                onChange={(e) => handleFilterChange('dateRange', e.target.value)}
+                displayEmpty
+                sx={{
+                  fontSize: 13,
+                  fontWeight: 500,
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#d1d5db'
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#6366f1'
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#6366f1'
+                  }
+                }}
+              >
+                <MenuItem value="all" sx={{ fontSize: 13 }}>All Time</MenuItem>
+                <MenuItem value="today" sx={{ fontSize: 13 }}>Today</MenuItem>
+                <MenuItem value="week" sx={{ fontSize: 13 }}>This Week</MenuItem>
+                <MenuItem value="month" sx={{ fontSize: 13 }}>This Month</MenuItem>
+              </Select>
+            </FormControl>
+
+            {/* Results Count */}
+            <div style={{ 
+              fontSize: 12, 
+              color: '#6b7280', 
+              fontWeight: 500,
+              marginLeft: 'auto'
+            }}>
+              {filteredNotifications.length} of {notifications.length}
+            </div>
+          </div>
+        </div>
+        
+        {/* Notifications List */}
+        <div style={{ 
+          padding: 0, 
+          overflowY: 'auto', 
+          height: 'calc(100vh - 140px)',
+          background: '#fafafa'
+        }}>
+          {notificationsLoading ? (
+            <div style={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              height: '300px',
+              gap: 16
+            }}>
+              <CircularProgress size={48} sx={{ color: '#6366f1' }} />
+              <div style={{ color: '#6b7280', fontSize: 16, fontWeight: 500 }}>Loading notifications...</div>
+            </div>
+                        ) : filteredNotifications.length === 0 ? (
+            <div style={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              height: '300px',
+              color: '#9ca3af', 
+              fontSize: 16,
+              textAlign: 'center'
+            }}>
+              <div style={{ 
+                width: 64, 
+                height: 64, 
+                borderRadius: '50%', 
+                background: '#f3f4f6', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                marginBottom: 16
+              }}>
+                <NotificationsIcon sx={{ fontSize: 32, color: '#d1d5db' }} />
+              </div>
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                {notifications.length === 0 ? 'No notifications yet' : 'No matching notifications'}
+              </div>
+              <div style={{ fontSize: 14 }}>
+                {notifications.length === 0 ? 'You\'re all caught up!' : 'Try adjusting your filters'}
+              </div>
+            </div>
+          ) : (
+            <div style={{ padding: '16px 0' }}>
+              {filteredNotifications.map((notification, index) => (
+                <div key={notification._id || index} style={{
+                  margin: '0 16px 12px 16px',
+                  background: notification.read ? '#ffffff' : '#fef3c7',
+                  borderRadius: 12,
+                  padding: '16px 20px',
+                  border: notification.read ? '1px solid #e5e7eb' : '1px solid #fbbf24',
+                  position: 'relative',
+                  transition: 'all 0.2s ease',
+                  cursor: 'pointer',
+                  '&:hover': {
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                    transform: 'translateY(-1px)'
+                  }
+                }}>
+                  {/* Unread Indicator */}
+                  {!notification.read && (
+                    <div style={{ 
+                      position: 'absolute', 
+                      top: 16, 
+                      left: 8, 
+                      width: 6, 
+                      height: 6, 
+                      borderRadius: '50%', 
+                      background: '#f59e0b',
+                      boxShadow: '0 0 0 2px #fef3c7'
+                    }} />
+                  )}
+                  
+                  {/* Notification Content */}
+                  <div style={{ 
+                    fontWeight: notification.read ? 400 : 600, 
+                    color: '#1f2937', 
+                    fontSize: 14, 
+                    marginBottom: 8,
+                    lineHeight: 1.5,
+                    paddingLeft: notification.read ? 0 : 12
+                  }}>
+                    {notification.message}
+                    {/* Show changes for update notifications */}
+                    {notification.details && notification.details.changes && notification.details.changes.length > 0 && (
+                      <div style={{ 
+                        marginTop: 8, 
+                        fontSize: 12, 
+                        color: '#6b7280',
+                        fontWeight: 400
+                      }}>
+                        {notification.details.changes.slice(0, 2).map((change, index) => (
+                          <div key={index} style={{ marginBottom: 2 }}>
+                            • {change}
+                          </div>
+                        ))}
+                        {notification.details.changes.length > 2 && (
+                          <div style={{ color: '#9ca3af', fontSize: 11 }}>
+                            +{notification.details.changes.length - 2} more changes
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Footer */}
+                  <div style={{ 
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginTop: 12,
+                    paddingLeft: notification.read ? 0 : 12
+                  }}>
+                    <span style={{ 
+                      color: '#6b7280', 
+                      fontSize: 12, 
+                      fontWeight: 500
+                    }}>
+                      {(() => {
+                        try {
+                          const date = new Date(notification.timestamp);
+                          if (isNaN(date.getTime())) {
+                            return 'Just now';
+                          }
+                          const now = new Date();
+                          const diffInMinutes = Math.floor((now - date) / (1000 * 60));
+                          
+                          if (diffInMinutes < 1) return 'Just now';
+                          if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+                          if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
+                          if (diffInMinutes < 10080) return `${Math.floor(diffInMinutes / 1440)}d ago`;
+                          
+                          return date.toLocaleDateString('en-IN', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric'
+                          });
+                        } catch (error) {
+                          return 'Just now';
+                        }
+                      })()}
+                    </span>
+                    <span style={{ 
+                      fontSize: 10, 
+                      padding: '4px 10px', 
+                      borderRadius: 16, 
+                      background: (() => {
+                        switch (notification.type) {
+                          case 'student_add': return '#dcfce7';
+                          case 'student_update': return '#dbeafe';
+                          case 'student_delete': return '#fee2e2';
+                          case 'payment_add': return '#fef3c7';
+                          case 'payment_update': return '#ede9fe';
+                          case 'payment_delete': return '#fecaca';
+                          default: return '#dbeafe';
+                        }
+                      })(),
+                      color: (() => {
+                        switch (notification.type) {
+                          case 'student_add': return '#166534';
+                          case 'student_update': return '#1e40af';
+                          case 'student_delete': return '#991b1b';
+                          case 'payment_add': return '#92400e';
+                          case 'payment_update': return '#5b21b6';
+                          case 'payment_delete': return '#991b1b';
+                          default: return '#1e40af';
+                        }
+                      })(),
+                      fontWeight: 600,
+                      textTransform: 'uppercase',
+                      letterSpacing: 0.5
+                    }}>
+                      {notification.type.replace('_', ' ')}
+                    </span>
+                  </div>
+                </div>
+              ))}
+              
+              {/* Pagination */}
+              {filteredNotifications.length > 0 && (
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'center', 
+                  padding: '24px 16px 16px 16px',
+                  borderTop: '1px solid #e5e7eb',
+                  background: '#ffffff'
+                }}>
+                  <Pagination
+                    count={Math.ceil(filteredNotifications.length / 20)}
+                    page={notificationPage}
+                    onChange={(_, page) => setNotificationPage(page)}
+                    size="small"
+                    color="primary"
+                    sx={{ 
+                      '& .MuiPaginationItem-root': { 
+                        fontWeight: 600,
+                        fontSize: 14
+                      },
+                      '& .Mui-selected': {
+                        background: '#6366f1 !important',
+                        color: 'white !important'
+                      }
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </Drawer>
     </div>
   );
 }

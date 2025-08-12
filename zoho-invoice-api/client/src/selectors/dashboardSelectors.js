@@ -10,19 +10,25 @@ export function getDashboardKPIs({ students, paymentsByMonth, months }) {
   const currentMonth = months[0];
   const lastMonth = months[1]; // Get the second month (last month)
   
+  // Create a set of existing student contact IDs for filtering
+  const existingStudentIds = new Set(students.map(s => s.contact_id));
+  
+  // Filter payments to only include those from existing students
+  const existingStudentPayments = paymentsByMonth.filter(row => existingStudentIds.has(row.customer_id));
+  
   // Current month calculations (for "Paid This Month" KPI)
   const paidCustomerIds = new Set(
-    paymentsByMonth.filter(row => (row[currentMonth] || 0) > 0).map(row => row.customer_id)
+    existingStudentPayments.filter(row => (row[currentMonth] || 0) > 0).map(row => row.customer_id)
   );
   const paidCount = students.filter(s => paidCustomerIds.has(s.contact_id)).length;
-  const totalPaidThisMonth = paymentsByMonth.reduce((sum, row) => sum + (row[currentMonth] || 0), 0);
+  const totalPaidThisMonth = existingStudentPayments.reduce((sum, row) => sum + (row[currentMonth] || 0), 0);
   
   // Last month calculations (for "Last Month Payments" KPI)
   const lastMonthPaidCustomerIds = new Set(
-    paymentsByMonth.filter(row => (row[lastMonth] || 0) > 0).map(row => row.customer_id)
+    existingStudentPayments.filter(row => (row[lastMonth] || 0) > 0).map(row => row.customer_id)
   );
   const lastMonthPaidCount = students.filter(s => lastMonthPaidCustomerIds.has(s.contact_id)).length;
-  const totalPaidLastMonth = paymentsByMonth.reduce((sum, row) => sum + (row[lastMonth] || 0), 0);
+  const totalPaidLastMonth = existingStudentPayments.reduce((sum, row) => sum + (row[lastMonth] || 0), 0);
   
   // Unpaid count (for reference, but we'll replace the KPI)
   const unpaidCount = students.length - paidCount;

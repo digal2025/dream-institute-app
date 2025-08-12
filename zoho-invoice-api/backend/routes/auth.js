@@ -84,7 +84,10 @@ router.post('/login', async (req, res) => {
     const token = jwt.sign({ id: user._id, email: user.email, name: user.name }, JWT_SECRET, { expiresIn: '7d' });
     console.log('🔍 JWT token generated successfully');
     
-    res.json({ success: true, token, user: { id: user._id, name: user.name, email: user.email } });
+    console.log('🔍 User role:', user.role);
+    console.log('🔍 Sending response with user data:', { id: user._id, name: user.name, email: user.email, role: user.role || 'admin' });
+    
+    res.json({ success: true, token, user: { id: user._id, name: user.name, email: user.email, role: user.role || 'admin' } });
   } catch (err) {
     console.error('❌ Login error:', err);
     res.status(500).json({ error: 'Login failed' });

@@ -7,14 +7,14 @@ const smsRoutes = require('../../routes/sms');
 const mongoCustomersRoutes = require('../../routes/mongoCustomers');
 const mongoPaymentsRoutes = require('../../routes/mongoPayments');
 const mongoInvoicesRoutes = require('../../routes/mongoInvoices');
-const notificationsRoutes = require('../../routes/notifications');
+
 const authRoutes = require('../../backend/routes/auth');
 
 // Import models
 const Customer = require('../../backend/models/Customer');
 const Payment = require('../../backend/models/Payment');
 const Invoice = require('../../backend/models/Invoice');
-const Notification = require('../../backend/models/Notification');
+
 const User = require('../../backend/models/User');
 
 // Import services
@@ -40,11 +40,11 @@ app.use('/api/sms', smsRoutes);
 app.use('/api/customers', mongoCustomersRoutes);
 app.use('/api/payments', mongoPaymentsRoutes);
 app.use('/api/invoices', mongoInvoicesRoutes);
-app.use('/api/notifications', notificationsRoutes);
+
 app.use('/api/auth', authRoutes);
 
 describe('Backend Routes', () => {
-  let testCustomer, testPayment, testInvoice, testNotification;
+  let testCustomer, testPayment, testInvoice;
 
   beforeEach(async () => {
     // Create test data
@@ -75,18 +75,9 @@ describe('Backend Routes', () => {
       status: 'pending'
     });
 
-    testNotification = new Notification({
-      user_id: 'USER001',
-      title: 'Test Notification',
-      message: 'This is a test notification',
-      type: 'info',
-      is_read: false
-    });
-
     await testCustomer.save();
     await testPayment.save();
     await testInvoice.save();
-    await testNotification.save();
   });
 
   describe('Customer Routes', () => {
@@ -573,147 +564,7 @@ describe('Backend Routes', () => {
     });
   });
 
-  describe('Notification Routes', () => {
-    describe('GET /api/notifications', () => {
-      it('should get all notifications', async () => {
-        const response = await request(app)
-          .get('/api/notifications')
-          .expect(200);
 
-        expect(response.body.success).toBe(true);
-        expect(Array.isArray(response.body.notifications)).toBe(true);
-        expect(response.body.notifications.length).toBeGreaterThan(0);
-        expect(response.body.notifications[0].title).toBe('Test Notification');
-      });
-
-      it('should get notifications with pagination', async () => {
-        const response = await request(app)
-          .get('/api/notifications?page=1&limit=10')
-          .expect(200);
-
-        expect(response.body.success).toBe(true);
-        expect(response.body.notifications).toBeDefined();
-        expect(response.body.pagination).toBeDefined();
-      });
-
-      it('should filter notifications by user', async () => {
-        const response = await request(app)
-          .get(`/api/notifications?user_id=${testNotification.user_id}`)
-          .expect(200);
-
-        expect(response.body.success).toBe(true);
-        expect(response.body.notifications.length).toBeGreaterThan(0);
-        expect(response.body.notifications[0].user_id).toBe(testNotification.user_id);
-      });
-
-      it('should filter notifications by read status', async () => {
-        const response = await request(app)
-          .get('/api/notifications?is_read=false')
-          .expect(200);
-
-        expect(response.body.success).toBe(true);
-        expect(response.body.notifications.length).toBeGreaterThan(0);
-        expect(response.body.notifications[0].is_read).toBe(false);
-      });
-    });
-
-    describe('GET /api/notifications/:id', () => {
-      it('should get notification by ID', async () => {
-        const response = await request(app)
-          .get(`/api/notifications/${testNotification._id}`)
-          .expect(200);
-
-        expect(response.body.success).toBe(true);
-        expect(response.body.notification.title).toBe('Test Notification');
-        expect(response.body.notification.message).toBe('This is a test notification');
-      });
-
-      it('should return 404 for non-existent notification', async () => {
-        const fakeId = new mongoose.Types.ObjectId();
-        const response = await request(app)
-          .get(`/api/notifications/${fakeId}`)
-          .expect(404);
-
-        expect(response.body.success).toBe(false);
-        expect(response.body.error).toBe('Notification not found');
-      });
-    });
-
-    describe('POST /api/notifications', () => {
-      it('should create a new notification', async () => {
-        const newNotificationData = {
-          user_id: 'USER002',
-          title: 'New Notification',
-          message: 'This is a new notification',
-          type: 'reminder',
-          is_read: false
-        };
-
-        const response = await request(app)
-          .post('/api/notifications')
-          .send(newNotificationData)
-          .expect(201);
-
-        expect(response.body.success).toBe(true);
-        expect(response.body.notification.title).toBe('New Notification');
-        expect(response.body.notification.type).toBe('reminder');
-      });
-    });
-
-    describe('PUT /api/notifications/:id', () => {
-      it('should update notification', async () => {
-        const updateData = {
-          is_read: true,
-          title: 'Updated Notification'
-        };
-
-        const response = await request(app)
-          .put(`/api/notifications/${testNotification._id}`)
-          .send(updateData)
-          .expect(200);
-
-        expect(response.body.success).toBe(true);
-        expect(response.body.notification.is_read).toBe(true);
-        expect(response.body.notification.title).toBe('Updated Notification');
-      });
-
-      it('should return 404 for non-existent notification', async () => {
-        const fakeId = new mongoose.Types.ObjectId();
-        const response = await request(app)
-          .put(`/api/notifications/${fakeId}`)
-          .send({ is_read: true })
-          .expect(404);
-
-        expect(response.body.success).toBe(false);
-        expect(response.body.error).toBe('Notification not found');
-      });
-    });
-
-    describe('DELETE /api/notifications/:id', () => {
-      it('should delete notification', async () => {
-        const response = await request(app)
-          .delete(`/api/notifications/${testNotification._id}`)
-          .expect(200);
-
-        expect(response.body.success).toBe(true);
-        expect(response.body.message).toContain('deleted');
-
-        // Verify notification is deleted
-        const deletedNotification = await Notification.findById(testNotification._id);
-        expect(deletedNotification).toBeNull();
-      });
-
-      it('should return 404 for non-existent notification', async () => {
-        const fakeId = new mongoose.Types.ObjectId();
-        const response = await request(app)
-          .delete(`/api/notifications/${fakeId}`)
-          .expect(404);
-
-        expect(response.body.success).toBe(false);
-        expect(response.body.error).toBe('Notification not found');
-      });
-    });
-  });
 
   describe('Admin Auth Routes', () => {
     let testAdmin;

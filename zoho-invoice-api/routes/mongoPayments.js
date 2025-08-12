@@ -1,26 +1,13 @@
 const express = require('express');
 const Payment = require('../backend/models/Payment');
 const Invoice = require('../backend/models/Invoice');
+const NotificationService = require('../services/notificationService');
 const User = require('../backend/models/User');
 const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const jwt = require('jsonwebtoken');
 
-// Helper to send notification
-const sendNotification = async (message, user) => {
-  try {
-    const Notification = require('../backend/models/Notification');
-    await Notification.create({
-      message,
-      time: new Date(),
-      read: false,
-      type: 'payment',
-      user: user || 'System'
-    });
-  } catch (err) {
-    console.error('Error sending notification:', err);
-  }
-};
+
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
@@ -169,7 +156,19 @@ router.post('/', async (req, res) => {
     }
     notificationMessage += `👨‍💼 Updated by: ${userName}`;
     
-    await sendNotification(notificationMessage, userName);
+    // Create minimal notification
+    await NotificationService.createNotification({
+      type: 'payment_add',
+      entityId: payment.payment_id,
+      entityName: payment.customer_name,
+      user: userName,
+      message: `💰 ₹${payment.amount.toLocaleString()} payment added for ${payment.customer_name}`,
+      details: {
+        amount: payment.amount,
+        paymentMode: payment.payment_mode,
+        customerId: payment.customer_id
+      }
+    });
     
     res.json({ payment });
   } catch (err) {
@@ -217,7 +216,18 @@ router.delete('/:id', requireSuperAdmin, async (req, res) => {
     }
     notificationMessage += `⚠️ Deleted by Super Admin: ${req.user.name}`;
     
-    await sendNotification(notificationMessage, req.user.name);
+    // Create minimal notification
+    await NotificationService.createNotification({
+      type: 'payment_delete',
+      entityId: deleted.payment_id,
+      entityName: customerName,
+      user: req.user.name,
+      message: `🗑️ ₹${deleted.amount.toLocaleString()} payment deleted for ${customerName}`,
+      details: {
+        amount: deleted.amount,
+        customerId: deleted.customer_id
+      }
+    });
     
     res.json({ success: true, message: 'Payment deleted' });
   } catch (err) {
@@ -305,7 +315,19 @@ router.patch('/:id', async (req, res) => {
       
       notificationMessage += `👨‍💼 Updated by: ${userName}`;
       
-      await sendNotification(notificationMessage, userName);
+      // Create minimal notification
+      const changeSummary = changes.slice(0, 2).join(', ');
+      await NotificationService.createNotification({
+        type: 'payment_update',
+        entityId: updated.payment_id,
+        entityName: studentName,
+        user: userName,
+        message: `✏️ Payment updated for ${studentName}`,
+        details: {
+          changes: changes.slice(0, 3), // Only store first 3 changes
+          customerId: updated.customer_id
+        }
+      });
     }
     
     res.json({ success: true, payment: updated });
