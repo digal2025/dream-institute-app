@@ -5,6 +5,7 @@
  * Exports getGridColumns({ monthsWithCurrent, paymentMap, formatMonthLabel })
  * Returns: { baseColumns, monthColumns, styledColumns }
  */
+import React from 'react';
 
 export function getGridColumns({ monthsWithCurrent, paymentMap, formatMonthLabel, handleOpenDialog, handlePaymentCellClick, handleOutstandingCellClick }) {
   const baseColumns = [
@@ -22,6 +23,7 @@ export function getGridColumns({ monthsWithCurrent, paymentMap, formatMonthLabel
     { field: 'customer_name', headerName: 'Name', minWidth: 140, pinned: 'left' },
     { field: 'cf_pgdca_course', headerName: 'Course', minWidth: 120 },
     { field: 'cf_batch_name', headerName: 'Batch', minWidth: 120 },
+
     { field: 'outstanding_receivable_amount', headerName: 'Outstanding', minWidth: 120, type: 'number' },
   ];
   // Reorder months in true chronological order (earliest to latest)

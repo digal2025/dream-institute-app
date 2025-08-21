@@ -1,5 +1,7 @@
 const express = require('express');
 const Customer = require('../backend/models/Customer');
+const Invoice = require('../backend/models/Invoice');
+const NotificationService = require('../services/notificationService');
 const router = express.Router();
 const mongoose = require('mongoose');
 const Payment = require('../backend/models/Payment');
@@ -87,33 +89,99 @@ router.post('/check-duplicates', async (req, res) => {
 });
 
 
-// Helper to send notification
-const sendNotification = async (message, user) => {
-  try {
-    const Notification = require('../backend/models/Notification');
-    await Notification.create({
-      message,
-      user,
-      time: new Date(),
-      read: false,
-      type: 'student',
-    });
-  } catch (err) { /* ignore */ }
-};
+
 
 // Add new customer
 router.post('/', async (req, res) => {
   try {
     let data = { ...req.body };
     if (!data.contact_id) delete data.contact_id;
+    
+    // Create customer
     const created = await Customer.create(data);
     if (!created.contact_id) {
       created.contact_id = created._id.toString();
       await created.save();
     }
-    // Send notification
-    await sendNotification(`Added student: ${created.customer_name}`, req.body.user || (req.user && req.user.name));
-    res.json({ customer: created });
+
+    // Create invoice if course_fees is provided
+    let invoice = null;
+    if (data.course_fees && data.course_fees > 0) {
+      const invoiceData = {
+        invoice_id: `INV-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        invoice_number: `INV-${Date.now()}`,
+        date: new Date(),
+        due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+        status: 'sent',
+        total: data.course_fees,
+        balance: data.course_fees, // Initially balance equals total
+        customer_id: created.contact_id,
+        customer_name: created.customer_name,
+        line_items: [{
+          name: `${data.cf_pgdca_course} Course Fee`,
+          description: `Course fees for ${data.cf_pgdca_course} - ${data.cf_batch_name}`,
+          quantity: 1,
+          rate: data.course_fees,
+          amount: data.course_fees
+        }],
+        payment_made: 0,
+        payments: [],
+        created_time: new Date(),
+        last_modified_time: new Date(),
+        custom_fields: []
+      };
+      
+      invoice = await Invoice.create(invoiceData);
+    }
+
+    // Send detailed notification with professional formatting
+    const currentTime = new Date().toLocaleString('en-IN', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+    
+    const userName = req.body.user || (req.user && req.user.name) || 'System';
+    
+    let notificationMessage = `➕ Student Added | ${currentTime}\n`;
+    notificationMessage += `👤 Student: ${created.customer_name}\n`;
+    notificationMessage += `📧 Email: ${created.email || 'Not provided'}\n`;
+    notificationMessage += `📱 Phone: ${created.phone || 'Not provided'}\n`;
+    notificationMessage += `📚 Course: ${created.cf_pgdca_course || 'Not specified'}\n`;
+    notificationMessage += `👥 Batch: ${created.cf_batch_name || 'Not specified'}\n`;
+    notificationMessage += `📊 Status: ${created.status}\n`;
+    
+    if (req.body.course_fees && req.body.course_fees > 0) {
+      notificationMessage += `💰 Course Fees: ₹${req.body.course_fees.toLocaleString()}\n`;
+      if (invoice) {
+        notificationMessage += `📄 Invoice Created (Total: ₹${invoice.total.toLocaleString()}, Balance: ₹${invoice.balance.toLocaleString()})\n`;
+      }
+    }
+    
+    notificationMessage += `👨‍💼 Added by: ${userName}`;
+    
+    // Create minimal notification
+    await NotificationService.createNotification({
+      type: 'student_add',
+      entityId: created.contact_id,
+      entityName: created.customer_name,
+      user: userName,
+      message: `👤 ${created.customer_name} added`,
+      details: {
+        course: created.cf_pgdca_course,
+        batch: created.cf_batch_name,
+        hasInvoice: !!invoice
+      }
+    });
+    
+    res.json({ 
+      customer: created, 
+      invoice: invoice,
+      message: invoice ? 'Student and invoice created successfully' : 'Student created successfully'
+    });
   } catch (err) {
     console.error('Error adding customer:', err.stack || err);
     // Handle duplicate key error with a user-friendly message
@@ -128,17 +196,212 @@ router.post('/', async (req, res) => {
 // PATCH /api/mongo/customers/:id - update a single customer by contact_id
 router.patch('/:id', async (req, res) => {
   try {
+    // Get the current customer data to check if course_fees is being added
+    const currentCustomer = await Customer.findOne({ contact_id: req.params.id });
+    if (!currentCustomer) {
+      return res.status(404).json({ error: 'Customer not found' });
+    }
+
+    // Update the customer
     const updated = await Customer.findOneAndUpdate(
       { contact_id: req.params.id },
       req.body,
       { new: true }
     );
-    if (!updated) {
-      return res.status(404).json({ error: 'Customer not found' });
+
+    // Check if course_fees is being added or updated
+    let invoice = null;
+    let existingInvoice = null;
+    const isAddingCourseFees = (!currentCustomer.course_fees || currentCustomer.course_fees === 0) && req.body.course_fees && req.body.course_fees > 0;
+    const isUpdatingCourseFees = currentCustomer.course_fees && req.body.course_fees && req.body.course_fees > 0 && req.body.course_fees !== currentCustomer.course_fees;
+    
+    // Debug logging removed for data privacy
+    
+    if (isAddingCourseFees || isUpdatingCourseFees) {
+      // Check if student already has an invoice
+      const allInvoices = await Invoice.find({ customer_id: updated.contact_id });
+      existingInvoice = allInvoices[0]; // Get the first one
+      
+      // Invoice check debug logging removed for data privacy
+      
+      if (existingInvoice) {
+        // If there are multiple invoices, delete the old ones first
+        if (allInvoices.length > 1) {
+                  // Multiple invoices found, deleting old ones...
+        for (let i = 1; i < allInvoices.length; i++) {
+          await Invoice.findByIdAndDelete(allInvoices[i]._id);
+          // Invoice deletion logged for audit purposes
+        }
+        }
+        
+        // Update existing invoice
+        const totalPaid = existingInvoice.payment_made || 0;
+        const newBalance = Math.max(0, req.body.course_fees - totalPaid);
+        
+        const updatedInvoice = await Invoice.findByIdAndUpdate(existingInvoice._id, {
+          total: req.body.course_fees,
+          balance: newBalance,
+          payment_made: totalPaid,
+          line_items: [{
+            name: `${req.body.cf_pgdca_course || updated.cf_pgdca_course} Course Fee`,
+            description: `Course fees for ${req.body.cf_pgdca_course || updated.cf_pgdca_course} - ${req.body.cf_batch_name || updated.cf_batch_name}`,
+            quantity: 1,
+            rate: req.body.course_fees,
+            amount: req.body.course_fees
+          }],
+          last_modified_time: new Date()
+        }, { new: true });
+        
+        invoice = updatedInvoice;
+        console.log('Invoice updated for student:', {
+          customerId: updated.contact_id,
+          customerName: updated.customer_name,
+          invoiceId: invoice.invoice_id,
+          total: invoice.total,
+          balance: invoice.balance,
+          paymentMade: invoice.payment_made
+        });
+      } else {
+        // Create new invoice for existing student
+        const invoiceData = {
+          invoice_id: `INV-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          invoice_number: `INV-${Date.now()}`,
+          date: new Date(),
+          due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+          status: 'sent',
+          total: req.body.course_fees,
+          balance: req.body.course_fees, // Initially balance equals total
+          customer_id: updated.contact_id,
+          customer_name: updated.customer_name,
+          line_items: [{
+            name: `${req.body.cf_pgdca_course || updated.cf_pgdca_course} Course Fee`,
+            description: `Course fees for ${req.body.cf_pgdca_course || updated.cf_pgdca_course} - ${req.body.cf_batch_name || updated.cf_batch_name}`,
+            quantity: 1,
+            rate: req.body.course_fees,
+            amount: req.body.course_fees
+          }],
+          payment_made: 0,
+          payments: [],
+          created_time: new Date(),
+          last_modified_time: new Date(),
+          custom_fields: []
+        };
+        
+        invoice = await Invoice.create(invoiceData);
+        console.log('Invoice created for student:', {
+          customerId: updated.contact_id,
+          customerName: updated.customer_name,
+          invoiceId: invoice.invoice_id,
+          total: invoice.total,
+          balance: invoice.balance
+        });
+      }
     }
-    // Send notification
-    await sendNotification(`Updated student: ${updated.customer_name}`, req.body.user || (req.user && req.user.name));
-    res.json({ customer: updated });
+
+    // Send detailed notification with professional formatting
+    const currentTime = new Date().toLocaleString('en-IN', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+    
+    const userName = req.body.user || (req.user && req.user.name) || 'System';
+    let changes = [];
+    let notificationMessage = ''; // Initialize notificationMessage variable
+    
+    // Track specific field changes
+    if (req.body.customer_name !== undefined && req.body.customer_name !== currentCustomer.customer_name) {
+      changes.push(`Name: "${currentCustomer.customer_name}" → "${req.body.customer_name}"`);
+    }
+    
+    if (req.body.email !== undefined && req.body.email !== currentCustomer.email) {
+      const oldEmail = currentCustomer.email || 'None';
+      const newEmail = req.body.email || 'None';
+      changes.push(`Email: "${oldEmail}" → "${newEmail}"`);
+    }
+    
+    if (req.body.phone !== undefined && req.body.phone !== currentCustomer.phone) {
+      const oldPhone = currentCustomer.phone || 'None';
+      const newPhone = req.body.phone || 'None';
+      changes.push(`Phone: "${oldPhone}" → "${newPhone}"`);
+    }
+    
+    if (req.body.cf_pgdca_course !== undefined && req.body.cf_pgdca_course !== currentCustomer.cf_pgdca_course) {
+      const oldCourse = currentCustomer.cf_pgdca_course || 'None';
+      const newCourse = req.body.cf_pgdca_course || 'None';
+      changes.push(`Course: "${oldCourse}" → "${newCourse}"`);
+    }
+    
+    if (req.body.cf_batch_name !== undefined && req.body.cf_batch_name !== currentCustomer.cf_batch_name) {
+      const oldBatch = currentCustomer.cf_batch_name || 'None';
+      const newBatch = req.body.cf_batch_name || 'None';
+      changes.push(`Batch: "${oldBatch}" → "${newBatch}"`);
+    }
+    
+    if (req.body.status !== undefined && req.body.status !== currentCustomer.status) {
+      changes.push(`Status: ${currentCustomer.status} → ${req.body.status}`);
+    }
+    
+    // Track course fee changes
+    if (req.body.course_fees !== undefined && req.body.course_fees !== currentCustomer.course_fees) {
+      const oldFees = currentCustomer.course_fees || 0;
+      const newFees = req.body.course_fees || 0;
+      
+      if (oldFees === 0 && newFees > 0) {
+        changes.push(`Course fees added: ₹${newFees.toLocaleString()}`);
+      } else if (oldFees > 0 && newFees > 0 && oldFees !== newFees) {
+        changes.push(`Course fees: ₹${oldFees.toLocaleString()} → ₹${newFees.toLocaleString()}`);
+      }
+      
+      // Add invoice details
+      if (invoice) {
+        if (existingInvoice) {
+          changes.push(`Invoice updated (Total: ₹${invoice.total.toLocaleString()}, Balance: ₹${invoice.balance.toLocaleString()}, Paid: ₹${invoice.payment_made.toLocaleString()})`);
+        } else {
+          changes.push(`Invoice created (Total: ₹${invoice.total.toLocaleString()}, Balance: ₹${invoice.balance.toLocaleString()})`);
+        }
+      }
+    }
+    
+    if (changes.length > 0) {
+      notificationMessage = `🔄 Student Updated | ${currentTime}\n`;
+      notificationMessage += `👤 Student: ${updated.customer_name}\n`;
+      notificationMessage += `📝 Changes Made:\n`;
+      
+      changes.forEach((change, index) => {
+        notificationMessage += `   ${index + 1}. ${change}\n`;
+      });
+      
+      notificationMessage += `👨‍💼 Updated by: ${userName}`;
+    } else {
+      notificationMessage = `ℹ️ Student Info | ${currentTime}\n`;
+      notificationMessage += `👤 Student: ${updated.customer_name}\n`;
+      notificationMessage += `📝 No changes detected\n`;
+      notificationMessage += `👨‍💼 Updated by: ${userName}`;
+    }
+    
+    // Create minimal notification
+    const changeSummary = changes.length > 0 ? changes.slice(0, 2).join(', ') : 'No changes';
+    await NotificationService.createNotification({
+      type: 'student_update',
+      entityId: updated.contact_id,
+      entityName: updated.customer_name,
+      user: userName,
+      message: `✏️ ${updated.customer_name} updated`,
+      details: {
+        changes: changes.slice(0, 3), // Only store first 3 changes
+        hasInvoice: !!invoice
+      }
+    });
+    
+    res.json({ 
+      customer: updated, 
+      invoice: invoice,
+      message: invoice ? (existingInvoice ? 'Student updated and invoice updated successfully' : 'Student updated and invoice created successfully') : 'Student updated successfully'
+    });
   } catch (err) {
     res.status(500).json({ error: err.message || 'Internal server error' });
   }
@@ -151,8 +414,43 @@ router.delete('/:id', async (req, res) => {
     if (!deleted) {
       return res.status(404).json({ error: 'Customer not found' });
     }
-    // Send notification
-    await sendNotification(`Deleted student: ${deleted.customer_name}`, req.body.user || (req.user && req.user.name));
+    // Send detailed notification with professional formatting
+    const currentTime = new Date().toLocaleString('en-IN', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+    
+    const userName = req.body.user || (req.user && req.user.name) || 'System';
+    
+    let notificationMessage = `🗑️ Student Deleted | ${currentTime}\n`;
+    notificationMessage += `👤 Student: ${deleted.customer_name}\n`;
+    notificationMessage += `📧 Email: ${deleted.email || 'Not provided'}\n`;
+    notificationMessage += `📱 Phone: ${deleted.phone || 'Not provided'}\n`;
+    notificationMessage += `📚 Course: ${deleted.cf_pgdca_course || 'Not specified'}\n`;
+    notificationMessage += `👥 Batch: ${deleted.cf_batch_name || 'Not specified'}\n`;
+    notificationMessage += `📊 Status: ${deleted.status}\n`;
+    if (deleted.course_fees && deleted.course_fees > 0) {
+      notificationMessage += `💰 Course Fees: ₹${deleted.course_fees.toLocaleString()}\n`;
+    }
+    notificationMessage += `⚠️ Deleted by: ${userName}`;
+    
+    // Create minimal notification
+    await NotificationService.createNotification({
+      type: 'student_delete',
+      entityId: deleted.contact_id,
+      entityName: deleted.customer_name,
+      user: userName,
+      message: `🗑️ ${deleted.customer_name} deleted`,
+      details: {
+        course: deleted.cf_pgdca_course,
+        batch: deleted.cf_batch_name
+      }
+    });
+    
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message || 'Internal server error' });

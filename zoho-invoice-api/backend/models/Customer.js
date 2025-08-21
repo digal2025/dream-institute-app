@@ -6,6 +6,14 @@ const CustomerSchema = new mongoose.Schema({
   phone: { type: String, required: false, index: true },
   cf_pgdca_course: { type: String, required: false },
   cf_batch_name: { type: String, required: false },
+  course_fees: { type: Number, required: false, default: 0 },
+  status: { 
+    type: String, 
+    required: true, 
+    default: 'in_progress', 
+    enum: ['in_progress', 'completed', 'dropped', 'on_hold'],
+    index: true 
+  },
   custom_fields: { type: Array, default: [] },
   contact_id: {
     type: String,

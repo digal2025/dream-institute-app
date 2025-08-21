@@ -67,13 +67,20 @@ router.post('/login', async (req, res) => {
     let student = await Customer.findOne({ email: emailOrPhone.toLowerCase() });
 
     if (!student) {
-      return res.status(400).json({ msg: 'Invalid credentials.' });
+      return res.status(404).json({ 
+        msg: 'Student not found in our database.',
+        errorType: 'student_not_found',
+        suggestion: 'Please contact the Institute admin to add your email to the system.'
+      });
     }
 
     // Check password
     const isMatch = await bcrypt.compare(password, student.password);
     if (!isMatch) {
-      return res.status(400).json({ msg: 'Invalid credentials.' });
+      return res.status(400).json({ 
+        msg: 'Invalid password.',
+        errorType: 'invalid_password'
+      });
     }
 
     // Check if OTP verification is required
@@ -235,7 +242,7 @@ router.post('/reset-password-request', async (req, res) => {
 
     // Send reset email
     try {
-      const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3001'}/student/reset-password?token=${token}`;
+      const resetUrl = `${process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://fees.dreaminstitute.co.in' : 'http://localhost:3001')}/student/reset-password?token=${token}`;
       await sendPasswordResetEmail(email, resetUrl);
       res.json({ msg: 'If your email is registered, you will receive a password reset link.' });
     } catch (emailError) {

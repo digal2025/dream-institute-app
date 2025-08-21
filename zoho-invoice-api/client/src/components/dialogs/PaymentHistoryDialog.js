@@ -9,8 +9,10 @@ import Typography from '@mui/material/Typography';
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import AssessmentIcon from '@mui/icons-material/Assessment';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import StudentFinancialReport from './StudentFinancialReport';
 
 /**
  * PaymentHistoryDialog
@@ -25,7 +27,7 @@ import autoTable from 'jspdf-autotable';
  * - student: object|null
  * - formatDateDMY: function
  */
-export default function PaymentHistoryDialog({ open, onClose, loading, error, payments, student, formatDateDMY, onPaymentDeleted, onPaymentUpdated, onNotify }) {
+export default function PaymentHistoryDialog({ open, onClose, loading, error, payments, student, currentUser, formatDateDMY, onPaymentDeleted, onPaymentUpdated }) {
   const [deletingId, setDeletingId] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [editValues, setEditValues] = useState({});
@@ -33,20 +35,33 @@ export default function PaymentHistoryDialog({ open, onClose, loading, error, pa
   const [updateSuccessId, setUpdateSuccessId] = useState(null);
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [showFinancialReport, setShowFinancialReport] = useState(false);
 
   const handleDelete = async (paymentId) => {
     setDeletingId(paymentId);
     try {
-      const res = await fetch(`/api/mongo/payments/${paymentId}`, { method: 'DELETE' });
+      const token = localStorage.getItem('token');
+      const res = await fetch(`/api/mongo/payments/${paymentId}`, { 
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to delete payment');
+      }
+      
       await res.json();
       setDeletingId(null);
       setConfirmDeleteId(null);
       onPaymentDeleted && onPaymentDeleted();
-      onNotify && onNotify({ message: `Payment deleted for ${student?.customer_name || 'a student'}.` });
+      // Backend already sends detailed notification, no need for frontend notification
     } catch (err) {
       setDeletingId(null);
       setConfirmDeleteId(null);
-      alert('Failed to delete payment.');
+      alert(`Failed to delete payment: ${err.message}`);
     }
   };
 
@@ -70,7 +85,10 @@ export default function PaymentHistoryDialog({ open, onClose, loading, error, pa
       const res = await fetch(`/api/mongo/payments/${paymentId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editValues),
+        body: JSON.stringify({
+          ...editValues,
+          user: currentUser?.name || currentUser?.email || 'Unknown User'
+        }),
       });
       await res.json();
       setEditingId(null);
@@ -78,7 +96,7 @@ export default function PaymentHistoryDialog({ open, onClose, loading, error, pa
       onPaymentUpdated && onPaymentUpdated();
       setShowUpdateDialog(true);
       setTimeout(() => setShowUpdateDialog(false), 2000);
-      onNotify && onNotify({ message: `Payment of ₹${editValues.amount} updated for ${student?.customer_name || 'a student'}.` });
+      // Backend already sends detailed notification, no need for frontend notification
     } catch (err) {
       setUpdatingId(null);
       alert('Failed to update payment.');
@@ -165,6 +183,26 @@ export default function PaymentHistoryDialog({ open, onClose, loading, error, pa
           <CloseIcon />
         </IconButton>
       </DialogTitle>
+      
+      {/* Financial Report Button */}
+      <Box sx={{ px: 5, py: 2, background: '#f8fafc', borderBottom: '1px solid #e0e7ff' }}>
+        <Button
+          variant="contained"
+          startIcon={<AssessmentIcon />}
+          onClick={() => setShowFinancialReport(true)}
+          sx={{
+            backgroundColor: '#10b981',
+            '&:hover': { backgroundColor: '#059669' },
+            borderRadius: 2,
+            fontWeight: 600,
+            px: 3,
+            py: 1,
+            boxShadow: '0 2px 8px rgba(16, 185, 129, 0.2)'
+          }}
+        >
+          Generate Financial Statement
+        </Button>
+      </Box>
       <DialogContent sx={{ p: { xs: 2, sm: 4, md: 5 }, background: 'none', minHeight: 320, mt: 1.5 }}>
         {loading ? (
           <Box sx={{ p: 5, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 320 }}>
@@ -251,9 +289,11 @@ export default function PaymentHistoryDialog({ open, onClose, loading, error, pa
                               <IconButton color="primary" size="small" onClick={() => handlePrintReceipt(p)} title="Print Receipt">
                                 <PictureAsPdfIcon />
                               </IconButton>
-                              <IconButton color="error" size="small" onClick={() => setConfirmDeleteId(p._id || p.payment_id)} disabled={deletingId === (p._id || p.payment_id) || editingId === (p._id || p.payment_id)}>
-                                {deletingId === (p._id || p.payment_id) ? <CircularProgress size={18} /> : <DeleteIcon />}
-                              </IconButton>
+                              {currentUser && currentUser.role === 'super_admin' && (
+                                <IconButton color="error" size="small" onClick={() => setConfirmDeleteId(p._id || p.payment_id)} disabled={deletingId === (p._id || p.payment_id) || editingId === (p._id || p.payment_id)}>
+                                  {deletingId === (p._id || p.payment_id) ? <CircularProgress size={18} /> : <DeleteIcon />}
+                                </IconButton>
+                              )}
                             </TableCell>
                           </TableRow>
                         );
@@ -325,6 +365,15 @@ export default function PaymentHistoryDialog({ open, onClose, loading, error, pa
           </Typography>
         </Box>
       </Dialog>
+
+      {/* Financial Report Dialog */}
+      <StudentFinancialReport
+        open={showFinancialReport}
+        onClose={() => setShowFinancialReport(false)}
+        student={student}
+        payments={payments}
+        formatDateDMY={formatDateDMY}
+      />
     </Dialog>
   );
 } 

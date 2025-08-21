@@ -2,13 +2,15 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Box, CircularProgress, MenuItem, Alert } from '@mui/material';
 import debounce from '../../utils/debounce';
 
-export default function AddCustomerDialog({ open, onClose, onSuccess, onNotify }) {
+export default function AddCustomerDialog({ open, onClose, onSuccess, currentUser }) {
   const [form, setForm] = useState({
     name: '',
     email: '',
     phone: '',
     cf_pgdca_course: '',
-    cf_batch_name: ''
+    cf_batch_name: '',
+    course_fees: '',
+    status: 'in_progress'
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -56,6 +58,8 @@ export default function AddCustomerDialog({ open, onClose, onSuccess, onNotify }
            form.phone.trim() !== '' && 
            form.cf_pgdca_course !== '' && 
            form.cf_batch_name !== '' &&
+           form.course_fees !== '' &&
+           parseFloat(form.course_fees) > 0 &&
            !validation.name &&
            !validation.email &&
            !validation.phone;
@@ -108,7 +112,9 @@ export default function AddCustomerDialog({ open, onClose, onSuccess, onNotify }
         email: form.email.trim(),
         phone: form.phone.trim(),
         cf_pgdca_course: form.cf_pgdca_course,
-        cf_batch_name: form.cf_batch_name
+        cf_batch_name: form.cf_batch_name,
+        course_fees: parseFloat(form.course_fees),
+        user: currentUser?.name || currentUser?.email || 'Unknown User'
       };
       
       const response = await fetch('/api/mongo/customers', {
@@ -126,13 +132,21 @@ export default function AddCustomerDialog({ open, onClose, onSuccess, onNotify }
           email: '',
           phone: '',
           cf_pgdca_course: '',
-          cf_batch_name: ''
+          cf_batch_name: '',
+          course_fees: ''
         });
         setValidation({ name: '', email: '', phone: '' });
         setError(null);
-        setSuccess('Student added successfully!');
+        
+        // Check if invoice was created
+        const hasInvoice = data.invoice;
+        const successMessage = hasInvoice 
+          ? `Student "${form.name}" added successfully with invoice for ₹${form.course_fees}!`
+          : `Student "${form.name}" added successfully!`;
+        
+        setSuccess(hasInvoice ? 'Student and invoice created successfully!' : 'Student added successfully!');
         onSuccess && onSuccess();
-        onNotify && onNotify({ message: `Student "${form.name}" added successfully.`, time: new Date().toLocaleString() });
+        // Backend already sends detailed notification, no need for frontend notification
         // onClose(); // Removed automatic close
       } else {
         // API error
@@ -152,7 +166,8 @@ export default function AddCustomerDialog({ open, onClose, onSuccess, onNotify }
       email: '',
       phone: '',
       cf_pgdca_course: '',
-      cf_batch_name: ''
+      cf_batch_name: '',
+      course_fees: ''
     });
     setValidation({ name: '', email: '', phone: '' });
     setError(null);
@@ -309,10 +324,74 @@ export default function AddCustomerDialog({ open, onClose, onSuccess, onNotify }
               error={!!validation.phone}
               helperText={validation.phone}
             />
+          </Box>
+          <Box sx={{ position: 'relative', mb: 2 }}>
+            <TextField
+              label="Course Fees (₹)"
+              name="course_fees"
+              type="number"
+              value={form.course_fees}
+              onChange={handleChange}
+              inputProps={{ 
+                min: 0, 
+                step: 0.01,
+                onKeyPress: e => { if (!/[0-9.]/.test(e.key)) e.preventDefault(); }
+              }}
+              required
+              fullWidth
+              InputLabelProps={{ sx: { fontWeight: 400, color: '#6366f1', fontSize: 16 } }}
+              sx={{
+                background: '#f8fafc',
+                borderRadius: 2,
+                boxShadow: '0 1px 4px #e0e7ff',
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 2,
+                  fontSize: 17,
+                  fontWeight: 500,
+                  color: '#222',
+                  background: '#f8fafc',
+                  '& fieldset': { borderColor: '#e0e7ff' },
+                  '&:hover fieldset': { borderColor: '#6366f1' },
+                  '&.Mui-focused fieldset': { borderColor: '#6366f1', borderWidth: 2 },
+                },
+              }}
+              helperText="Enter the total course fees amount"
+            />
             {success && (
               <Alert severity="success" sx={{ mt: 2 }}>{success}</Alert>
             )}
           </Box>
+          <TextField 
+            label="Student Status" 
+            name="status" 
+            value={form.status} 
+            onChange={handleChange} 
+            select
+            required
+            fullWidth
+            InputLabelProps={{ sx: { fontWeight: 400, color: '#6366f1', fontSize: 16 } }}
+            sx={{
+              mb: 2,
+              background: '#f8fafc',
+              borderRadius: 2,
+              boxShadow: '0 1px 4px #e0e7ff',
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 2,
+                fontSize: 17,
+                fontWeight: 500,
+                color: '#222',
+                background: '#f8fafc',
+                '& fieldset': { borderColor: '#e0e7ff' },
+                '&:hover fieldset': { borderColor: '#6366f1' },
+                '&.Mui-focused fieldset': { borderColor: '#6366f1', borderWidth: 2 },
+              },
+            }}
+          >
+            <MenuItem value="in_progress">In Progress</MenuItem>
+            <MenuItem value="completed">Completed</MenuItem>
+            <MenuItem value="dropped">Dropped</MenuItem>
+            <MenuItem value="on_hold">On Hold</MenuItem>
+          </TextField>
           {error && <Box sx={{ color: 'red', fontWeight: 600 }}>{error}</Box>}
         </Box>
       </DialogContent>

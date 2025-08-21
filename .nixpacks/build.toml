@@ -1,0 +1,16 @@
+[phases.setup]
+nixPkgs = ["nodejs_22", "npm-9_x"]
+
+[phases.install]
+cmds = ["npm ci"]
+
+[phases.build]
+cmds = ["CI=false DISABLE_ESLINT_PLUGIN=true npm run build"]
+
+[start]
+cmd = "cd zoho-invoice-api && npm start"
+
+[variables]
+NODE_ENV = "production"
+CI = "false"
+DISABLE_ESLINT_PLUGIN = "true" 

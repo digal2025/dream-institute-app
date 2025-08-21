@@ -10,19 +10,25 @@ export function getDashboardKPIs({ students, paymentsByMonth, months }) {
   const currentMonth = months[0];
   const lastMonth = months[1]; // Get the second month (last month)
   
+  // Create a set of existing student contact IDs for filtering
+  const existingStudentIds = new Set(students.map(s => s.contact_id));
+  
+  // Filter payments to only include those from existing students
+  const existingStudentPayments = paymentsByMonth.filter(row => existingStudentIds.has(row.customer_id));
+  
   // Current month calculations (for "Paid This Month" KPI)
   const paidCustomerIds = new Set(
-    paymentsByMonth.filter(row => (row[currentMonth] || 0) > 0).map(row => row.customer_id)
+    existingStudentPayments.filter(row => (row[currentMonth] || 0) > 0).map(row => row.customer_id)
   );
   const paidCount = students.filter(s => paidCustomerIds.has(s.contact_id)).length;
-  const totalPaidThisMonth = paymentsByMonth.reduce((sum, row) => sum + (row[currentMonth] || 0), 0);
+  const totalPaidThisMonth = existingStudentPayments.reduce((sum, row) => sum + (row[currentMonth] || 0), 0);
   
   // Last month calculations (for "Last Month Payments" KPI)
   const lastMonthPaidCustomerIds = new Set(
-    paymentsByMonth.filter(row => (row[lastMonth] || 0) > 0).map(row => row.customer_id)
+    existingStudentPayments.filter(row => (row[lastMonth] || 0) > 0).map(row => row.customer_id)
   );
   const lastMonthPaidCount = students.filter(s => lastMonthPaidCustomerIds.has(s.contact_id)).length;
-  const totalPaidLastMonth = paymentsByMonth.reduce((sum, row) => sum + (row[lastMonth] || 0), 0);
+  const totalPaidLastMonth = existingStudentPayments.reduce((sum, row) => sum + (row[lastMonth] || 0), 0);
   
   // Unpaid count (for reference, but we'll replace the KPI)
   const unpaidCount = students.length - paidCount;
@@ -53,8 +59,18 @@ export function getFilteredStudents({ students, paymentsByMonth, months, search,
     // Assume invoice has customer_id or contact_id and amount (or total)
     const cid = inv.customer_id || inv.contact_id;
     if (!cid) return;
-    if (!invoiceMap[cid]) invoiceMap[cid] = 0;
-    invoiceMap[cid] += Number(inv.total || inv.amount || 0);
+    
+    // Only keep the latest invoice for each customer (by last_modified_time)
+    if (!invoiceMap[cid] || (inv.last_modified_time && invoiceMap[cid].last_modified_time && 
+        new Date(inv.last_modified_time) > new Date(invoiceMap[cid].last_modified_time))) {
+      invoiceMap[cid] = inv;
+    }
+  });
+  
+  // Convert to amount map for calculation
+  const invoiceAmountMap = {};
+  Object.keys(invoiceMap).forEach(cid => {
+    invoiceAmountMap[cid] = Number(invoiceMap[cid].total || invoiceMap[cid].amount || 0);
   });
   const monthsWithCurrent = months ? [...months] : [];
   const filteredStudents = students.filter(s =>
@@ -67,8 +83,11 @@ export function getFilteredStudents({ students, paymentsByMonth, months, search,
       monthPayments[`paid_${m}`] = paymentRow[m] || 0;
       totalPaid += paymentRow[m] || 0;
     });
-    const invoiceAmount = invoiceMap[s.contact_id] || 0;
+    const invoiceAmount = invoiceAmountMap[s.contact_id] || 0;
     const outstanding = invoiceAmount - totalPaid;
+    
+    // Debug logging removed for data privacy
+    
     return {
       ...s,
       ...monthPayments,

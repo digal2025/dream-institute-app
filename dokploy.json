@@ -1,0 +1,17 @@
+{
+  "build": {
+    "command": "npm run build"
+  },
+  "start": {
+    "command": "cd zoho-invoice-api && npm start"
+  },
+  "environment": {
+    "NODE_ENV": "production",
+    "PORT": "3000",
+    "CI": "false",
+    "DISABLE_ESLINT_PLUGIN": "true",
+    "GENERATE_SOURCEMAP": "false",
+    "SKIP_PREFLIGHT_CHECK": "true",
+    "NODE_OPTIONS": "--max-old-space-size=4096"
+  }
+} 

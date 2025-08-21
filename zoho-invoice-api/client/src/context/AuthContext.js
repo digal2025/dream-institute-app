@@ -26,6 +26,11 @@ export function AuthProvider({ children }) {
             localStorage.removeItem('user');
             setUser(null);
             console.warn('Session expired or invalid. Please log in again.');
+          } else {
+            // Update user data with fresh data from server (including role)
+            const updatedUser = { ...JSON.parse(userData), ...data.user };
+            localStorage.setItem('user', JSON.stringify(updatedUser));
+            setUser(updatedUser);
           }
         })
         .catch(() => {

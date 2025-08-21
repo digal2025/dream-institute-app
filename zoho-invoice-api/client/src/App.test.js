@@ -73,8 +73,7 @@ jest.mock('./handlers/useDashboardHandlers', () => ({
     handleEditCustomer: jest.fn(),
     handleAddPayment: jest.fn(),
     handleOpenSmsDialog: jest.fn(),
-    handleOpenNotifications: jest.fn(),
-    handleClearNotifications: jest.fn(),
+
     handleNotify: jest.fn()
   })
 }));
