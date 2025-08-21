@@ -6,6 +6,15 @@ jest.mock('@sendgrid/mail', () => ({
   send: jest.fn()
 }));
 
+// Mock database models
+jest.mock('../backend/models/Customer', () => ({
+  findOne: jest.fn()
+}));
+
+jest.mock('../backend/models/Payment', () => ({
+  find: jest.fn()
+}));
+
 // Import the service after mocking
 const sendgridService = require('../services/sendgridService');
 
@@ -24,21 +33,30 @@ describe('SendGrid Service', () => {
         }
       ];
       
+      // Mock database responses
+      const Customer = require('../backend/models/Customer');
+      const Payment = require('../backend/models/Payment');
+      
+      Customer.findOne.mockResolvedValue({
+        customer_name: 'John Doe',
+        course_fees: 5000,
+        cf_pgdca_course: 'PGDCA',
+        cf_batch_name: 'Batch A'
+      });
+      
+      Payment.find.mockResolvedValue([]); // No payments this month
+      
       sgMail.send.mockResolvedValue(mockResponse);
 
       const result = await sendgridService.sendFeeReminderEmail(
         'test@example.com',
         'John Doe',
-        5000,
-        'PGDCA',
-        'Batch A'
+        'test-customer-id'
       );
 
-      expect(result).toEqual([{
-        statusCode: 202,
-        headers: {},
-        body: {}
-      }]);
+      expect(result.sent).toBe(true);
+      expect(result.outstandingAmount).toBeDefined();
+      expect(result.monthlyFee).toBeDefined();
       expect(sgMail.send).toHaveBeenCalledWith(
         expect.objectContaining({
           to: 'test@example.com',
@@ -59,14 +77,25 @@ describe('SendGrid Service', () => {
         }
       ];
       
+      // Mock database responses
+      const Customer = require('../backend/models/Customer');
+      const Payment = require('../backend/models/Payment');
+      
+      Customer.findOne.mockResolvedValue({
+        customer_name: 'John Doe',
+        course_fees: 5000,
+        cf_pgdca_course: 'PGDCA',
+        cf_batch_name: 'Batch A'
+      });
+      
+      Payment.find.mockResolvedValue([]); // No payments this month
+      
       sgMail.send.mockResolvedValue(mockResponse);
 
       await sendgridService.sendFeeReminderEmail(
         'test@example.com',
         'John Doe',
-        5000,
-        'PGDCA',
-        'Batch A'
+        'test-customer-id'
       );
 
       const sentEmail = sgMail.send.mock.calls[0][0];
@@ -75,7 +104,7 @@ describe('SendGrid Service', () => {
       expect(sentEmail.from).toBe('test@example.com');
       expect(sentEmail.subject).toContain('Fee Payment Reminder');
       expect(sentEmail.html).toContain('Dear <b>John Doe</b>');
-      expect(sentEmail.html).toContain('₹5000');
+      expect(sentEmail.html).toContain('₹5,000');
       expect(sentEmail.html).toContain('PGDCA');
       expect(sentEmail.html).toContain('Batch A');
       expect(sentEmail.text).toContain('Dear John Doe');
@@ -90,18 +119,29 @@ describe('SendGrid Service', () => {
         }
       ];
       
+      // Mock database responses
+      const Customer = require('../backend/models/Customer');
+      const Payment = require('../backend/models/Payment');
+      
+      Customer.findOne.mockResolvedValue({
+        customer_name: 'John Doe',
+        course_fees: 1234567,
+        cf_pgdca_course: 'PGDCA',
+        cf_batch_name: 'Batch A'
+      });
+      
+      Payment.find.mockResolvedValue([]); // No payments this month
+      
       sgMail.send.mockResolvedValue(mockResponse);
 
       await sendgridService.sendFeeReminderEmail(
         'test@example.com',
         'John Doe',
-        1234567,
-        'PGDCA',
-        'Batch A'
+        'test-customer-id'
       );
 
       const sentEmail = sgMail.send.mock.calls[0][0];
-      expect(sentEmail.html).toContain('₹1234567');
+      expect(sentEmail.html).toContain('₹1,234,567');
     });
 
     it('should handle SendGrid API errors', async () => {

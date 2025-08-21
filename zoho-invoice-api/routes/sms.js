@@ -74,8 +74,7 @@ router.post('/send-reminder', async (req, res) => {
     if (!student || !student.email) {
       return res.status(400).json({ success: false, error: 'Student email not found' });
     }
-    const outstandingAmount = student.outstanding_receivable_amount || 0;
-    await sendFeeReminderEmail(student.email, studentName, outstandingAmount, course, batch);
+    await sendFeeReminderEmail(student.email, studentName, studentId);
     res.json({ success: true, message: `Fee reminder email sent to ${student.email}.` });
   } catch (error) {
     console.error('Error sending fee reminder email:', error);
@@ -116,7 +115,7 @@ router.post('/send-bulk-reminders', async (req, res) => {
     let successful = 0, failed = 0;
     for (const student of unpaidThisMonth) {
       try {
-        await sendFeeReminderEmail(student.email, student.customer_name, student.outstanding_receivable_amount || 0, student.cf_pgdca_course, student.cf_batch_name);
+        await sendFeeReminderEmail(student.email, student.customer_name, student.contact_id);
         successful++;
       } catch (err) {
         failed++;
