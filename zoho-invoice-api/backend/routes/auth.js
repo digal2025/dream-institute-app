@@ -6,7 +6,7 @@ const User = require('../models/User');
 const { sendOtpEmail } = require('../../services/sendgridService');
 const crypto = require('crypto');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'changeme-secret';
+const { JWT_SECRET, authMiddleware } = require('../../middleware/auth');
 
 /**
  * POST /api/auth/register
@@ -288,20 +288,7 @@ router.delete('/admin-users/:id', async (req, res) => {
   }
 });
 
-/**
- * Middleware to verify JWT
- */
-function authMiddleware(req, res, next) {
-  const auth = req.headers.authorization;
-  if (!auth || !auth.startsWith('Bearer ')) return res.status(401).json({ error: 'No token' });
-  try {
-    const decoded = jwt.verify(auth.split(' ')[1], JWT_SECRET);
-    req.user = decoded;
-    next();
-  } catch (err) {
-    res.status(401).json({ error: 'Invalid token' });
-  }
-}
+
 
 /**
  * GET /api/auth/me
